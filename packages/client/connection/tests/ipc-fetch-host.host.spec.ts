@@ -1,8 +1,6 @@
-/** IpcApiClient and the structured-clone fetch port against a Host handler. */
+/** Host IPC fetch dispatcher and the shared createIpcFetch serializer. */
 
 import { describe, expect, it } from 'vitest'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { IpcApiClient } from '../src/client/ipc-api-client.ts'
 import { createIpcFetch, type IpcFetchPort, type IpcFetchRequest } from '../src/ipc-fetch.ts'
 import { dispatchIpcFetch } from '../src/ipc-fetch-host.ts'
 import type { FetchHandler } from '../src/http-bridge.ts'
@@ -91,26 +89,7 @@ function fixtureHandler(): FetchHandler {
   }
 }
 
-describe('IpcApiClient', () => {
-  it('round-trips a unary call and an SSE mux stream over the IPC port', async () => {
-    const port = loopbackPort(fixtureHandler())
-    const client = new IpcApiClient(port)
-    const described = await client.host.describe({})
-    expect(described.result).toEqual({
-      ok: true,
-      value: { version: '0.0.0', cwd: '/', attachedSessions: 0, canOpenPath: true },
-    })
-
-    const frames = []
-    for await (const frame of client.events.mux({}, new AbortController().signal)) {
-      frames.push(frame)
-    }
-    expect(frames).toEqual([{
-      rpcId: 'mux-1',
-      payload: { type: 'session/subscribed', sessionId: 's1', lastSeq: 3 },
-    }])
-  })
-
+describe('dispatchIpcFetch', () => {
   it('rejects an already-aborted signal and accepts string or empty abort reasons', async () => {
     const port = loopbackPort(fixtureHandler())
     const fetchImpl = createIpcFetch(port)
@@ -222,13 +201,5 @@ describe('IpcApiClient', () => {
     }
     const response = await createIpcFetch(port)(new URL('http://dsh.internal/api/events.host'))
     expect(await response.text()).toBe('')
-  })
-
-  it('mints rpc ids through IpcApiClient', async () => {
-    const port = loopbackPort(fixtureHandler())
-    const client = new IpcApiClient(port, 1_000)
-    const response = await client.host.describe({})
-    expect(response.rpcId).toBeDefined()
-    expect(RpcId(String(response.rpcId))).toBe(response.rpcId)
   })
 })

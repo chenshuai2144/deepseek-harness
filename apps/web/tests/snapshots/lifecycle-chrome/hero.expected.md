@@ -17,6 +17,9 @@
     - img
     - text: workspace
   - treeitem "New Session" [selected]
+- button "Source Control":
+  - img
+  - text: Source Control
 - button "Settings":
   - img
   - text: Settings

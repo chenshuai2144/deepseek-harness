@@ -8,7 +8,9 @@ import { apply, type ConnectionHandle } from '../src/client/index.ts'
 import type { RpcMessage } from '../src/client/api.ts'
 import { RpcId } from '../src/client/api.ts'
 import { FixtureApiClient } from '../src/client/fixture.ts'
+import { IpcApiClient } from '../src/client/ipc-api-client.ts'
 import { WebApiClient } from '../src/client/web-api-client.ts'
+import type { DshDesktopBridge } from '../src/ipc-fetch.ts'
 
 type Win = { location?: { hostname: string; search: string; origin?: string } }
 type WebSocketGlobal = { WebSocket?: typeof WebSocket }
@@ -63,6 +65,42 @@ async function mount(): Promise<ConnectionHandle> {
 }
 
 describe('connection client apply', () => {
+  it('keeps the fixture client when both ?fixture and the desktop bridge are present', async () => {
+    ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
+    const bridge: DshDesktopBridge = {
+      start: async () => ({ status: 200, statusText: '', headers: {}, streaming: false, body: '{}' }),
+      pull: async () => ({ done: true }),
+      abort: () => undefined,
+      bootGraph: async () => ({}),
+      readBundle: async () => '',
+    }
+    ;(globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__ = bridge
+    try {
+      expect((await mount()).api).toBeInstanceOf(FixtureApiClient)
+    } finally {
+      delete (globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__
+    }
+  })
+
+  it('selects IpcApiClient when the desktop preload bridge is present', async () => {
+    ;(globalThis as Win).location = { hostname: 'app', search: '' }
+    const bridge: DshDesktopBridge = {
+      start: async () => ({ status: 200, statusText: '', headers: {}, streaming: false, body: '{}' }),
+      pull: async () => ({ done: true }),
+      abort: () => undefined,
+      bootGraph: async () => ({}),
+      readBundle: async () => '',
+    }
+    ;(globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__ = bridge
+    try {
+      const handle = await mount()
+      expect(handle.api).toBeInstanceOf(IpcApiClient)
+      expect(handle.isLoopback).toBe(true)
+    } finally {
+      delete (globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__
+    }
+  })
+
   it('mounts ctx.connection with the real client when no ?fixture switch is present', async () => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '' }
     const handle = await mount()

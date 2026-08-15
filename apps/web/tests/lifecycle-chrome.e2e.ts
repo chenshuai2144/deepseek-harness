@@ -32,6 +32,7 @@ const PLAN_ACTIVE_EXPECTED = join(SNAPSHOT_DIR, 'plan-active.expected.md')
 // Post-reload golden: the same settled conversation rebuilt purely from
 // persistence + history — byte-equal rendering is exactly the recovery claim.
 const RELOADED_EXPECTED = join(SNAPSHOT_DIR, 'reloaded.expected.md')
+const SCM_EXPECTED = join(SNAPSHOT_DIR, 'scm.expected.md')
 const MODE = webSnapshotMode()
 
 const PROMPT = 'Reply with the single word LIGHTHOUSE and stop.'
@@ -217,6 +218,15 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     expect((turnEnds[0] as SessionEvent & { data: { reason: { kind: string } } }).data.reason.kind).toBe('completed')
   }, 60_000)
 
+  it.skipIf(MODE === 'record')('opens the SCM sidebar from the sidebar foot', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-scm'))
+    await page.getByRole('button', { name: 'Source Control' }).click()
+    await expect.poll(() => page.getByTestId('scm-panel').count(), { timeout: 10_000 }).toBe(1)
+    const snapshot = await captureStableAria(page, '[data-testid="scm-panel"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(SCM_EXPECTED, snapshot, MODE)
+    expect(snapshot).toContain('Not a git repository')
+  })
+
   it.skipIf(MODE === 'record')('recovers the whole surface across a reload from the log alone', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-reload'))
     const warningStart = tripwire.warnings.length
@@ -271,7 +281,7 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
     expect(tripwire.warnings).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, [
-      'session.jsonl', 'command-menu.expected.md', 'command-menu-fuzzy.expected.md', 'hero.expected.md', 'plan-active.expected.md', 'reloaded.expected.md',
+      'session.jsonl', 'command-menu.expected.md', 'command-menu-fuzzy.expected.md', 'hero.expected.md', 'plan-active.expected.md', 'reloaded.expected.md', 'scm.expected.md',
     ])
   })
 })

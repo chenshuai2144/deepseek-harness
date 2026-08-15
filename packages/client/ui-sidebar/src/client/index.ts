@@ -39,7 +39,7 @@ export function apply(ctx: ClientContext): void {
   })
   ctx.effect(
     () => ctx.slots.register({
-      name: 'sidebar',
+      name: 'sidebar.agent',
       locale: NS,
       // The shell owns geometry; ui-workspace registers the whole browsing
       // region (header, search, session list, workspace dialogs), ui-settings

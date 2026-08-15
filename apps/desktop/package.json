@@ -1,0 +1,21 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "Electron shell for the dsh Agent GUI: main process, sandboxed renderer, and Host utility process",
+  "version": "0.1.0-rc.5",
+  "private": true,
+  "type": "module",
+  "main": "electron-main.mjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh": "workspace:^",
+    "@deepseek-ai/dsh-app-boot": "workspace:^",
+    "@deepseek-ai/dsh-client-connection": "workspace:^",
+    "@deepseek-ai/dsh-client-modules": "workspace:^",
+    "@deepseek-ai/dsh-web-frontend": "workspace:^",
+    "electron": "^37.2.6",
+    "tsx": "^4.22.4"
+  }
+}

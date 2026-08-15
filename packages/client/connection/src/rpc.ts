@@ -56,6 +56,12 @@ export interface HostConnectionRpc {
 export interface HostConnectionHandle {
   /** Generic RPC channel registry. */
   readonly rpc: HostConnectionRpc
+  /**
+   * Shared WHATWG fetch face for every Connection channel. HTTP and IPC
+   * carriers call the same handler; privileged /api methods still require a
+   * loopback Host unless the caller is already inside the Host process.
+   */
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>
 }
 
 /** Client caller for logical RPC channels carried by the current transport. */

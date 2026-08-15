@@ -19,7 +19,10 @@ beforeEach(() => { localStorage.clear() })
 describe('createLayoutStore', () => {
   it('initializes the sidebar at its default width, details closed, wide viewport assumed', () => {
     const { store } = createLayoutStore().create()
-    expect(store.getSnapshot()).toEqual({ sidebar: SIDEBAR_DEFAULT, details: 0, narrow: false, narrowExpanded: false })
+    expect(store.getSnapshot()).toEqual({
+      sidebar: SIDEBAR_DEFAULT, details: 0, narrow: false, narrowExpanded: false,
+      sidebarView: 'agent', detailsView: 'conversation', scmSelection: null,
+    })
   })
 
   it('each create() is an independent instance (factory is not a singleton)', () => {
@@ -55,7 +58,7 @@ describe('createLayoutStore', () => {
     actions.setSidebar(400)
     actions.setNarrow(true)
     actions.toggleSidebar()
-    expect(store.getSnapshot()).toEqual({ sidebar: 400, details: 0, narrow: true, narrowExpanded: true })
+    expect(store.getSnapshot()).toMatchObject({ sidebar: 400, details: 0, narrow: true, narrowExpanded: true })
     actions.toggleSidebar()
     expect(store.getSnapshot().narrowExpanded).toBe(false)
     expect(store.getSnapshot().sidebar).toBe(400)
@@ -85,6 +88,25 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().details).toBe(0)
   })
 
+  it('setSidebarView writes the sidebar occupant without touching geometry', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.setSidebarView('scm')
+    expect(store.getSnapshot()).toMatchObject({ sidebarView: 'scm', sidebar: SIDEBAR_DEFAULT, details: 0 })
+  })
+
+  it('openScmDetails records the file, switches the details occupant, and opens the panel', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.openScmDetails({ path: 'src/a.ts', staged: false })
+    expect(store.getSnapshot()).toMatchObject({
+      detailsView: 'scm',
+      scmSelection: { path: 'src/a.ts', staged: false },
+      details: DETAILS_DEFAULT,
+    })
+    actions.openDetails()
+    expect(store.getSnapshot().detailsView).toBe('conversation')
+    expect(store.getSnapshot().details).toBe(DETAILS_DEFAULT)
+  })
+
   it('does not persist panel geometry', () => {
     const first = createLayoutStore().create()
     first.actions.setSidebar(400)
@@ -98,6 +120,9 @@ describe('createLayoutStore', () => {
       details: 0,
       narrow: false,
       narrowExpanded: false,
+      sidebarView: 'agent',
+      detailsView: 'conversation',
+      scmSelection: null,
     })
   })
 })

@@ -5,11 +5,14 @@
  * the per-session active view dissolved into ui-conversation's session store
  * (its only consumer). What remains here is the contract other plugins'
  * apply worlds reach for panel transitions (sidebar toggle from ui-sidebar,
- * details open/close from ui-conversation) — writes stay inside the store's
- * declared action set, delivered as the registration's bound actions.
+ * details open/close from ui-conversation, SCM details from ui-scm) — writes
+ * stay inside the store's declared action set, delivered as the registration's
+ * bound actions.
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { createLayoutStore } from './stores.ts'
+import type { createLayoutStore, ScmSelection, SidebarView } from './stores.ts'
+
+export type { DetailsView, ScmSelection, SidebarView } from './stores.ts'
 
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
@@ -23,10 +26,17 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 export interface ILayout {
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
-  /** Open the details panel (no-op when already open). */
+  /** Open the conversation-tool details panel (no-op when already open). */
   openDetails(): void
   /** Close the details panel. */
   closeDetails(): void
+  /** Switch the sidebar occupant (`agent` sessions or `scm`). Viewing state. */
+  setSidebarView(view: SidebarView): void
+  /**
+   * Open the details panel on an SCM file diff.
+   * @param selection - workspace-relative path and staged/unstaged side.
+   */
+  openScmDetails(selection: ScmSelection): void
 }
 
 /** Cross-plugin panel-action face (ctx.layout). */
@@ -49,7 +59,7 @@ export class LayoutController implements ILayout {
     this.#require().toggleSidebar()
   }
 
-  /** Open the details panel (no-op when already open). */
+  /** Open the conversation-tool details panel (no-op when already open). */
   openDetails(): void {
     this.#require().openDetails()
   }
@@ -57,6 +67,22 @@ export class LayoutController implements ILayout {
   /** Close the details panel. */
   closeDetails(): void {
     this.#require().closeDetails()
+  }
+
+  /**
+   * Switch the sidebar occupant.
+   * @param view - `agent` (sessions) or `scm`.
+   */
+  setSidebarView(view: SidebarView): void {
+    this.#require().setSidebarView(view)
+  }
+
+  /**
+   * Open the details panel on an SCM file diff.
+   * @param selection - workspace-relative path and staged/unstaged side.
+   */
+  openScmDetails(selection: ScmSelection): void {
+    this.#require().openScmDetails(selection)
   }
 
   #require(): PanelActions {

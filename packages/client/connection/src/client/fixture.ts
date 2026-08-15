@@ -2563,6 +2563,38 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       },
       openPath: request => ok(request, { opened: true as const }),
     },
+    git: {
+      status: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+      diff: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+      stage: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+      unstage: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+      commit: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+      branch: request => err(request, {
+        code: 'git-not-a-repository',
+        message: `${request.payload.cwd} is not a git repository`,
+        details: { cwd: request.payload.cwd },
+      }),
+    },
     workspace: {
       list: request => ok(request, {
         items: workspaces.map(w => ({ ...w })),
@@ -3098,6 +3130,12 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'host.listDirectory': return this.api.host.listDirectory(request, new AbortController().signal)
       case 'host.createDirectory': return this.api.host.createDirectory(request)
       case 'host.openPath': return this.api.host.openPath(request, new AbortController().signal)
+      case 'git.status': return this.api.git.status(request, signal)
+      case 'git.diff': return this.api.git.diff(request, signal)
+      case 'git.stage': return this.api.git.stage(request)
+      case 'git.unstage': return this.api.git.unstage(request)
+      case 'git.commit': return this.api.git.commit(request)
+      case 'git.branch': return this.api.git.branch(request)
       case 'workspace.list': return this.api.workspace.list(request)
       case 'workspace.create': return this.api.workspace.create(request)
       case 'workspace.rename': return this.api.workspace.rename(request)

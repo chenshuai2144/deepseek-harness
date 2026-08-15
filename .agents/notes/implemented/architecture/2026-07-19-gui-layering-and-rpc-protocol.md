@@ -31,11 +31,11 @@ Directories layer as follows:
     - **Fetch-arrival plugin packages** (`ui-layout`, `ui-sidebar`, `ui-conversation`, `ui-trajectory`): dual-entry — the root index is the node half (an empty `apply`, existing so the host Loader governs lifecycle and the web plugin registry discovers the package.json `dsh.client` declaration); the implementation lives under `src/client/`, shipped as the `./client` subpath (a tsdown closure-factory bundle). Cross-plugin consumption of `/client` is type-only; value cooperation goes through cordis services.
 - `apps/` holds the externally exported applications, assembled from Client / Host mixtures.
     - `apps/web` (`dsh-web-frontend`) is the vite application: a thin `main.ts` over the shell API exported by `dsh-client-web`.
-    - `apps/cli` (`@deepseek-ai/dsh`) dispatches commands: `dsh web` = Host + webserver + the built `dsh-web-frontend` dist; `dsh --profile headless` = [a direct core Agent/Session entry point](2026-08-09-headless-direct-core-entry-point.md), with zero Host, HTTP, or browser layer.
-    - A future Electron application reuses the same web client packages over an IPC fetch carrier.
+    - `apps/cli` (`@deepseek-ai/dsh`) dispatches commands: `dsh web` = Host + webserver + the built `dsh-web-frontend` dist; `dsh desktop` = the [Electron Agent GUI](2026-08-14-desktop-electron-agent-gui.md); `dsh --profile headless` = [a direct core Agent/Session entry point](2026-08-09-headless-direct-core-entry-point.md), with zero Host, HTTP, or browser layer.
+    - `apps/desktop` (`@deepseek-ai/dsh-desktop`) is the Electron shell: main process + sandboxed renderer + Host child. The renderer reuses the built web client over an IPC fetch carrier (`IpcApiClient`). The OpenSumi-like workbench (three-column Agent frame, SCM) is a layout contribution on that shared client — [`ui-layout`](../../../../packages/client/ui-layout/README.md) plus [`ui-scm`](../../../../packages/client/ui-scm/README.md) — not a new Electron package family. Privileged `git.*` RPC is loopback-pinned beside `host.pickDirectory`.
 
 ```
-apps/*  (applications: apps/web = vite app, apps/cli = bin dispatch)
+apps/*  (applications: apps/web = vite app, apps/cli = bin dispatch, apps/desktop = Electron shell)
   │ consume
   ▼
 packages/host/*                      packages/client/*
@@ -218,7 +218,7 @@ All four quadrant full forms pass through `onEnvelope`; the base implementation 
 | `InProcessApiClient` | apiproxy itself | the injected `{ fetch }` handler | **The isomorphic point**: `new InProcessApiClient(toFetchHandler(api))` never touches the network yet runs the real wire serialization/zod/SSE framing; carrier tests and callers can exercise the protocol without opening a port, while product `dsh --profile headless` drives core directly |
 | `WebApiClient` | dsh-client-connection | `globalThis.fetch` uplink + one same-origin WebSocket downlink per logical stream | the browser client; physical boundary in the [WebSocket downlink carrier](2026-08-04-websocket-downlink-carrier.md) |
 | `FixtureApiClient` | dsh-client-connection | unused (protocol-layer override) | serverless UI development (`?fixture`): overrides the `callUnary`/`openMux`/`openHost`/`respond` virtuals and is itself the fake server (frame rpcIds minted by it, semantics self-consistent) |
-| IPC bridge subclass (hypothetical example — no such shell exists) | an Electron shell | IPC serialization round trip | would swap only doFetch; contract and base class unchanged |
+| `IpcApiClient` | dsh-client-connection | preload `window.__DSH_DESKTOP__` structured-clone fetch | the Electron renderer in the [desktop Agent GUI](2026-08-14-desktop-electron-agent-gui.md); mux/host keep the base-class SSE reader; Host `connection.fetch` is the same handler HTTP uses |
 
 ## How to extend (operational checklists)
 

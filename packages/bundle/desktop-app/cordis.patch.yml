@@ -1,0 +1,37 @@
+# The dsh-desktop-app bundle: rides over dsh-base + dsh-web-app and replaces
+# the HTTP carriage with the Electron IPC host. The browser roster stays the
+# web-app insert; this layer only disables the listen path and pins native
+# directory picking.
+
+- id: webserver
+  disabled: true
+
+- id: web-startup
+  disabled: true
+
+- id: web-runtime
+  disabled: true
+
+- id: client-hmr
+  disabled: true
+
+# Restate the connection row without webRuntime: IPC has no LAN trust fence.
+# A later patch keeps unspecified keys, so inject must be cleared explicitly.
+- id: connection
+  name: '@deepseek-ai/dsh-client-connection'
+  inject: []
+  config:
+    trustedHosts: []
+
+# Auto waits on webServer. Include patches cannot change a row's `name`, so
+# disable auto and insert the native backend as its own row.
+- id: directory-picker
+  disabled: true
+
+- insert:
+    - id: directory-picker-native
+      name: '@deepseek-ai/dsh-host-directory-picker-native'
+    - id: desktop-runtime
+      name: '@deepseek-ai/dsh-desktop-app'
+      config:
+        surfaceContext: true

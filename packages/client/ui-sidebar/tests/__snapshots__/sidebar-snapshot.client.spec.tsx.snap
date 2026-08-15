@@ -2,7 +2,7 @@
 
 exports[`sidebar shell snapshots > renders the collapsed rail after the crossfade settles, in place 1`] = `
 <div
-  data-slot="sidebar"
+  data-slot="sidebar.agent"
   style="display: contents;"
 >
   <div
@@ -85,7 +85,7 @@ exports[`sidebar shell snapshots > renders the collapsed rail after the crossfad
 
 exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsule, empty holes) 1`] = `
 <div
-  data-slot="sidebar"
+  data-slot="sidebar.agent"
   style="display: contents;"
 >
   <div
@@ -178,7 +178,7 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
 
 exports[`sidebar shell snapshots > renders the expanded column in the default locale (zh, no setLocale) 1`] = `
 <div
-  data-slot="sidebar"
+  data-slot="sidebar.agent"
   style="display: contents;"
 >
   <div

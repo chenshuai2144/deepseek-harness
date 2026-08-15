@@ -125,7 +125,7 @@ async function screen(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: join(REPO_ROOT, '.artifacts', `w5-${name}.png`) })
 }
 
-/** First column track (px string) of the frame grid. */
+/** Sidebar column track (px string) of the three-column frame. */
 async function firstTrack(page: Page): Promise<string> {
   return (await page.locator('[class*="frame"]').evaluate(
     el => getComputedStyle(el).gridTemplateColumns)).split(' ')[0]!
@@ -143,6 +143,7 @@ async function detailsTrack(page: Page): Promise<number> {
 // the frame never appears.
 const UI_PLUGIN_DIRS = [
   'connection', 'runtime', 'ui-theme', 'locale', 'ui-layout', 'ui-sidebar',
+  'ui-scm',
   'ui-settings', 'ui-settings-general', 'ui-settings-models', 'ui-conversation',
   'ui-model-selection', 'ui-user-questions', 'ui-trajectory', '../session-query/session-log-export',
 ]
@@ -522,7 +523,7 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY || notReady.length > 0)('web smoke
     if (sessionsDir !== undefined) rmSync(sessionsDir, { recursive: true, force: true })
   })
 
-  it('cold start: loading page settles into the three-column frame', async () => {
+  it('cold start: loading page settles into the three-column agent frame', async () => {
     onTestFailed(() => saveFailureShot(page, 'w5-cold-start'))
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     expect(await page.locator('text=Failed to load plugins').count()).toBe(0)

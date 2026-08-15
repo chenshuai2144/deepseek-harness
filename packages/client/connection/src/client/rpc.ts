@@ -13,10 +13,14 @@ const CHANNEL_PATTERN = /^\/[A-Za-z0-9._~-]+$/
 const ENDPOINT_SEGMENT_PATTERN = /^[A-Za-z0-9_$.-]+$/
 
 /**
- * Create the browser-backed generic RPC caller.
+ * Create a generic RPC caller over an injected fetch (HTTP or IPC).
+ * @param fetchImpl - transport fetch; defaults to `globalThis.fetch`.
  * @returns caller that owns request correlation and response-envelope validation.
  */
-export function createWebConnectionRpc(): ClientConnectionRpc {
+export function createWebConnectionRpc(
+  fetchImpl?: (input: URL, init?: RequestInit) => Promise<Response>,
+): ClientConnectionRpc {
+  const fetchFn = fetchImpl ?? ((input: URL, init?: RequestInit) => globalThis.fetch(input, init))
   return {
     async call(channel, endpoint, payload, signal) {
       assertTarget(channel, endpoint)
@@ -27,7 +31,7 @@ export function createWebConnectionRpc(): ClientConnectionRpc {
         method: endpoint,
         payload,
       }
-      const response = await globalThis.fetch(
+      const response = await fetchFn(
         new URL(`${channel}/${endpoint}`, resolveBase()),
         {
           method: 'POST',

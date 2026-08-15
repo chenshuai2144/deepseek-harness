@@ -35,6 +35,10 @@ import {
   hostPickDirectoryRequestSchema,
 } from '../api/host.schema.ts'
 import {
+  gitBranchRequestSchema, gitCommitRequestSchema, gitDiffRequestSchema,
+  gitStageRequestSchema, gitStatusRequestSchema, gitUnstageRequestSchema,
+} from '../api/git.schema.ts'
+import {
   workspaceArchiveSessionRequestSchema,
   workspaceCreateRequestSchema,
   workspaceDeleteRequestSchema,
@@ -109,6 +113,12 @@ const UNARY_ROUTES: UnaryRoutes = {
   'host.listDirectory': { schema: hostListDirectoryRequestSchema, invoke: (api, r, signal) => api.host.listDirectory(r, signal) },
   'host.createDirectory': { schema: hostCreateDirectoryRequestSchema, invoke: (api, r) => api.host.createDirectory(r) },
   'host.openPath': { schema: hostOpenPathRequestSchema, invoke: (api, r, signal) => api.host.openPath(r, signal) },
+  'git.status': { schema: gitStatusRequestSchema, invoke: (api, r, signal) => api.git.status(r, signal) },
+  'git.diff': { schema: gitDiffRequestSchema, invoke: (api, r, signal) => api.git.diff(r, signal) },
+  'git.stage': { schema: gitStageRequestSchema, invoke: (api, r) => api.git.stage(r) },
+  'git.unstage': { schema: gitUnstageRequestSchema, invoke: (api, r) => api.git.unstage(r) },
+  'git.commit': { schema: gitCommitRequestSchema, invoke: (api, r) => api.git.commit(r) },
+  'git.branch': { schema: gitBranchRequestSchema, invoke: (api, r) => api.git.branch(r) },
   'workspace.list': { schema: workspaceListRequestSchema, invoke: (api, r) => api.workspace.list(r) },
   'workspace.create': { schema: workspaceCreateRequestSchema, invoke: (api, r) => api.workspace.create(r) },
   'workspace.rename': { schema: workspaceRenameRequestSchema, invoke: (api, r) => api.workspace.rename(r) },
@@ -174,7 +184,6 @@ function fullResponse(narrow: RpcResponse<unknown>): Response {
  */
 // K appears once in the signature but ties the UNARY_ROUTES[K] row lookup to its own
 // schema/invoke pairing; a union parameter degrades the row to an uninvokable intersection.
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 async function handleUnary<K extends keyof RpcMethodMap>(
   api: ApiProxy, method: K, message: ClientRequest, signal: AbortSignal,
 ): Promise<Response> {

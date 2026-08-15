@@ -29,11 +29,11 @@ Status: implemented
     - **fetch 到达插件包**（`ui-layout`、`ui-sidebar`、`ui-conversation`、`ui-trajectory`）：双入口——根入口是 node 半边（空 `apply`，其存在是为了让 host Loader 管辖生命周期、让 web 插件注册表发现 package.json 的 `dsh.client` 声明）；实现住在 `src/client/` 下，经 `./client` 子路径发布（tsdown 闭包工厂 bundle）。跨插件消费 `/client` 只限类型；值层面的协作走 cordis 服务。
 - `apps/` 作为对外导出的应用入口，可以由 Client / Host 混合组装。
     - `apps/web`（`dsh-web-frontend`）是 vite 应用：`dsh-client-web` 导出的壳 API 之上的一层薄 `main.ts`。
-    - `apps/cli`（`@deepseek-ai/dsh`）分发命令：`dsh web` = Host + webserver + 构建出的 `dsh-web-frontend` dist；`dsh --profile headless` = [直接使用核心 Agent／Session 的入口](2026-08-09-headless-direct-core-entry-point.md)，不含 Host、HTTP 或浏览器层。
-    - 将来的 Electron 应用经由 IPC fetch 载体复用同一套 web client 包。
+    - `apps/cli`（`@deepseek-ai/dsh`）分发命令：`dsh web` = Host + webserver + 构建出的 `dsh-web-frontend` dist；`dsh desktop` = [Electron Agent GUI](2026-08-14-desktop-electron-agent-gui.md)；`dsh --profile headless` = [直接使用核心 Agent／Session 的入口](2026-08-09-headless-direct-core-entry-point.md)，不含 Host、HTTP 或浏览器层。
+    - `apps/desktop`（`@deepseek-ai/dsh-desktop`）是 Electron 外壳：主进程 + 沙箱渲染进程 + Host 子进程。渲染进程经由 IPC fetch 载体（`IpcApiClient`）复用已构建的 web client。OpenSumi 式工作台（三栏 Agent 架子、SCM）是那套共享客户端上的 layout 贡献 — [`ui-layout`](../../../../packages/client/ui-layout/README.md) 加 [`ui-scm`](../../../../packages/client/ui-scm/README.md) — 不是新的 Electron 包族。特权 `git.*` RPC 与 `host.pickDirectory` 一样钉在回环。
 
 ```
-apps/*  (applications: apps/web = vite app, apps/cli = bin dispatch)
+apps/*  (applications: apps/web = vite app, apps/cli = bin dispatch, apps/desktop = Electron shell)
   │ consume
   ▼
 packages/host/*                      packages/client/*
@@ -73,7 +73,7 @@ TypeScript 以 solution 根引用的**两个聚合 program** 检查（`tsconfig.
 
 #### 怎么接入一个新应用（操作清单）
 
-1. **选 fetch 伪造方式**：浏览器同源 HTTP / 进程内 `host.handler.fetch` 注入 / 自写传输切面子类（如将来 Electron IPC，见下文「子类表」）。
+1. **选 fetch 伪造方式**：浏览器同源 HTTP / 进程内 `host.handler.fetch` 注入 / 自写传输切面子类（如 Electron IPC 的 `IpcApiClient`，见下文「子类表」）。
 2. **在 `apps/` 下写拼装模块**：`startHost()` + 客户端子类 + 该应用私有的信号/打印/退出语义；混合体不建包，拼装写在 app 里。
 3. **需要 HTTP 承载才 import `dsh-host-webserver`**，否则零端口。
 
@@ -216,7 +216,7 @@ export type ResponseValue<K> =
 | `InProcessApiClient` | apiproxy 本包 | 注入的 `{ fetch }` handler | **同构点**：`new InProcessApiClient(toFetchHandler(api))` 全程不过网络但真跑 wire 序列化/zod/SSE 帧；载体测试与调用方可以在不打开端口的情况下运行这套协议，而产品 `dsh --profile headless` 直接驱动 core |
 | `WebApiClient` | dsh-client-connection | `globalThis.fetch` 上行 + 每逻辑流一条同源 WebSocket 下行 | 浏览器客户端；物理边界见 [WebSocket 下行载体](2026-08-04-websocket-downlink-carrier.md) |
 | `FixtureApiClient` | dsh-client-connection | 不用（协议层覆写） | 无 server 的 UI 开发（`?fixture`）：覆写 `callUnary`/`openMux`/`openHost`/`respond` 虚方法，自己就是假 server（帧 rpcId 由它 mint，语义自洽） |
-| IPC 桥子类（假想示例——尚无此形态） | Electron 壳 | IPC 序列化往返 | 只需换 doFetch，约定/基类零改 |
+| `IpcApiClient` | dsh-client-connection | preload `window.__DSH_DESKTOP__` 结构化克隆 fetch | [桌面 Agent GUI](2026-08-14-desktop-electron-agent-gui.md) 的 Electron 渲染进程；mux/host 沿用基类 SSE 读取；Host 的 `connection.fetch` 与 HTTP 共用同一 handler |
 
 ## 怎么扩展（操作清单）
 

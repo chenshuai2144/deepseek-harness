@@ -10,7 +10,7 @@ import type { ApiProxy } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import { RpcId, type ClientRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
 import type { WebServer, WebRoute, WebUpgradeRoute } from '@deepseek-ai/dsh-host-webserver'
-import { API_PATH, apply, HOST_EVENTS_PATH, inject, MUX_EVENTS_PATH, type HostConnectionHandle } from '../src/index.ts'
+import { API_PATH, apply, HOST_EVENTS_PATH, HostConnectionService, inject, MUX_EVENTS_PATH, type HostConnectionHandle } from '../src/index.ts'
 
 /** Structural webServer fake recording both route registries. */
 function fakeHttpServer(
@@ -415,6 +415,96 @@ describe('connection node half', () => {
     expect(publicResponse.state.status).toBe(403)
     await removeLoopback()
     await remove()
+    await fiber.dispose()
+  })
+
+  it('exposes fetch without webServer and serves SSE when Accept asks for it', async () => {
+    const ctx = new Context()
+    const frames = [{
+      rpcId: RpcId('mux-ipc'),
+      payload: { type: 'session/subscribed' as const, sessionId: 'session-ipc', lastSeq: 1 },
+    }]
+    ctx.provide('apiProxy', {
+      events: {
+        mux: async function* () {
+          yield frames[0]!
+        },
+        host: async function* () {},
+      },
+      sessions: {
+        list: async (request: { rpcId: string }) => ({
+          rpcId: request.rpcId,
+          result: { ok: true, value: { items: [] } },
+        }),
+      },
+    } as unknown as ApiProxy)
+    const fiber = ctx.plugin({ inject: [...inject], apply })
+    await fiber.await()
+    const connection = ctx.get('connection') as HostConnectionHandle
+    const listed = await connection.fetch('http://127.0.0.1/api/session.list', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: '127.0.0.1' },
+      body: JSON.stringify({
+        type: 'client-request', rpcId: 'list-ipc', method: 'session.list', payload: {},
+      }),
+    })
+    expect(listed.status).toBe(200)
+    expect(await listed.json()).toMatchObject({
+      type: 'server-response',
+      rpcId: 'list-ipc',
+      result: { ok: true, value: { items: [] } },
+    })
+
+    const sse = await connection.fetch('http://127.0.0.1/api/events.mux', {
+      headers: { accept: 'text/event-stream', host: '127.0.0.1' },
+    })
+    expect(sse.status).toBe(200)
+    expect(sse.headers.get('content-type')).toContain('text/event-stream')
+    const text = await sse.text()
+    expect(text).toContain('session/subscribed')
+
+    const upgrade = await connection.fetch('http://127.0.0.1/api/events.mux', {
+      headers: { host: '127.0.0.1' },
+    })
+    expect(upgrade.status).toBe(426)
+
+    const missing = await connection.fetch('http://127.0.0.1/unknown')
+    expect(missing.status).toBe(404)
+
+    const noProxy = new Context()
+    const noProxyFiber = noProxy.plugin({ inject: [...inject], apply })
+    await noProxyFiber.await()
+    const bare = noProxy.get('connection') as HostConnectionHandle
+    const sseMissing = await bare.fetch('http://127.0.0.1/api/events.mux', {
+      headers: { accept: 'text/event-stream', host: '127.0.0.1' },
+    })
+    expect(sseMissing.status).toBe(404)
+    const unaryMissing = await bare.fetch('http://127.0.0.1/api/session.list', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: '127.0.0.1' },
+      body: JSON.stringify({
+        type: 'client-request', rpcId: 'missing-proxy', method: 'session.list', payload: {},
+      }),
+    })
+    expect(unaryMissing.status).toBe(404)
+    await noProxyFiber.dispose()
+
+    const remove = connection.rpc.handle('/rpc', async () => ({ ok: true, value: { via: 'ipc' } }), {
+      authority: 'trusted-host',
+    })
+    const dedicated = await connection.fetch('http://127.0.0.1/rpc/goals/create', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: '127.0.0.1' },
+      body: JSON.stringify({
+        type: 'client-request', rpcId: 'rpc-ipc', method: 'goals/create', payload: {},
+      }),
+    })
+    expect(await dedicated.json()).toMatchObject({
+      result: { ok: true, value: { via: 'ipc' } },
+    })
+    await remove()
+    const isolated = new HostConnectionService(new Context(), [])
+    expect((await isolated.fetch('http://127.0.0.1/api/session.list')).status).toBe(404)
     await fiber.dispose()
   })
 })

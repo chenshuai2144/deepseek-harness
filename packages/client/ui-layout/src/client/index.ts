@@ -1,17 +1,18 @@
 /**
  * Layout plugin, browser half: one register() call contributes AppFrame into
  * the runtime's built-in 'root' slot and, in the same breath, declares the
- * four child slots (declaration = exclusive render authority), seats the
- * layout store (panel geometry), and wires the panel-action service face.
- * ctx.layout is the cross-plugin panel-action contract; navigation state lives
- * with the runtime sessions service. A second effect seats the theme
- * presenter, which projects ctx.theme snapshots onto document.body.
+ * workbench child slots (declaration = exclusive render authority), seats the
+ * layout store (panel geometry + sidebar occupant), and wires the
+ * panel-action service face. ctx.layout is the cross-plugin panel-action
+ * contract; navigation state lives with the runtime sessions service. A
+ * second effect seats the theme presenter, which projects ctx.theme snapshots
+ * onto document.body.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { PanelActions } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
-import { createLayoutStore } from './stores.ts'
+import { createLayoutStore, type ScmSelection } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 
@@ -22,6 +23,7 @@ import { ThemePresenter } from './theme-presenter.ts'
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
 export type { ILayout } from './service.ts'
+export type { DetailsView, ScmSelection, SidebarView } from './stores.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -33,20 +35,21 @@ declare module '@deepseek-ai/cordis' {
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     // The 'root' entry itself is the runtime's built-in slot (declared
-    // there); these four are the frame's children, declared by the same
-    // register() call that contributes AppFrame. Session owners never pass
-    // sessionId: the framework injects it as a standard prop.
+    // there); these children are declared by the same register() call that
+    // contributes AppFrame. Session owners never pass sessionId: the
+    // framework injects it as a standard prop.
     /**
-     * The whole left column. OCCUPIED by ui-sidebar's SidebarRoot, which
-     * declares the workspace and settings seats inside it — registering here
-     * replaces the navigation column outright rather than adding to it, and
-     * the seats it declares disappear with it. To add something to the
-     * sidebar, register into one of those inner seats instead.
-     *
-     * The occupant receives the frame's live column state (collapsed, width)
-     * and is expected to render the compact control rail while collapsed.
+     * Agent sidebar view (workspaces / sessions / settings). OCCUPIED by
+     * ui-sidebar's SidebarRoot. The occupant receives the frame's live
+     * column state (collapsed, width) and is expected to render the compact
+     * control rail while collapsed.
      */
-    'sidebar': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
+    'sidebar.agent': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
+    /**
+     * Source-control sidebar view. OCCUPIED by ui-scm. Opened from the agent
+     * sidebar foot, not an IDE activity bar.
+     */
+    'sidebar.scm': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
      * The whole center column, across both the no-session hero and a live
      * conversation. OCCUPIED by ui-conversation's ConversationRoot, which
@@ -70,6 +73,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * `session` scope, and `ctx.layout` owns whether the column is open.
      */
     'details': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    /**
+     * SCM file-diff body in the details column. OCCUPIED by ui-scm. The owner
+     * passes the current SCM selection (or null while none is chosen).
+     */
+    'details.scm': { kind: 'single'; scope: 'session'; owner: ScmDetailsOwnerProps }
     /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers. Deliberately generic and unowned by any feature: a badge, a
@@ -104,6 +112,12 @@ export interface ConvOwnerProps {}
 /** Details owner share: empty — sessionId arrives as a framework-standard prop. */
 export interface DetailsOwnerProps {}
 
+/** SCM details owner share: the file the SCM panel selected. */
+export interface ScmDetailsOwnerProps {
+  /** Selected path and staged/unstaged side, or null while none is chosen. */
+  selection: ScmSelection | null
+}
+
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
 export const inject = ['slots', 'theme']
 
@@ -120,9 +134,11 @@ export function apply(ctx: ClientContext): void {
     const disposeRegistration = ctx.slots.register({
       name: 'root',
       children: {
-        'sidebar': { kind: 'single', scope: 'root' },
+        'sidebar.agent': { kind: 'single', scope: 'root' },
+        'sidebar.scm': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
         'details': { kind: 'single', scope: 'session' },
+        'details.scm': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       // Exclusive store: the factory itself — the framework instantiates per

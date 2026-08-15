@@ -20,6 +20,12 @@ import {
   hostListDirectoryRequestSchema, hostListDirectoryValueSchema,
 } from '../src/api/host.schema.ts'
 import {
+  gitBranchRequestSchema, gitBranchValueSchema, gitChangeSchema, gitCommitRequestSchema,
+  gitCommitValueSchema, gitDiffRequestSchema, gitDiffValueSchema, gitStageRequestSchema,
+  gitStageValueSchema, gitStatusRequestSchema, gitStatusValueSchema, gitUnstageRequestSchema,
+  gitUnstageValueSchema,
+} from '../src/api/git.schema.ts'
+import {
   workspaceArchiveSessionRequestSchema, workspaceArchiveSessionValueSchema,
   workspaceCreateRequestSchema, workspaceCreateValueSchema, workspaceIdSchema,
   workspaceDeleteRequestSchema, workspaceDeleteValueSchema,
@@ -80,6 +86,11 @@ describe('rpcErrorSchema', () => {
     // The credentials producer still emits this code, so the branch has to stay.
     expect(rpcErrorSchema.parse({ code: 'credential-rejected', message: 'm', details: { ref: 'r' } }).code).toBe('credential-rejected')
     expect(rpcErrorSchema.parse({ code: 'internal', message: 'm', details: {} }).code).toBe('internal')
+    expect(rpcErrorSchema.parse({ code: 'git-unavailable', message: 'm', details: {} }).code).toBe('git-unavailable')
+    expect(rpcErrorSchema.parse({ code: 'git-not-a-repository', message: 'm', details: { cwd: '/r' } }).code).toBe('git-not-a-repository')
+    expect(rpcErrorSchema.parse({ code: 'git-not-found', message: 'm', details: { cwd: '/r' } }).code).toBe('git-not-found')
+    expect(rpcErrorSchema.parse({ code: 'git-empty-message', message: 'm', details: { cwd: '/r' } }).code).toBe('git-empty-message')
+    expect(rpcErrorSchema.parse({ code: 'git-failed', message: 'm', details: { cwd: '/r' } }).code).toBe('git-failed')
   })
 
   it('rejects a known code with missing details', () => {
@@ -542,6 +553,31 @@ describe('respond payload schemas', () => {
     expect(answer.answers[0]?.selected).toEqual(['x'])
     const payload = questionResponsePayloadSchema.parse({ sessionId: 's', answer: { answers: [] } })
     expect(payload.sessionId).toBe('s')
+  })
+})
+
+describe('git domain schemas', () => {
+  it('validates status, diff, stage, commit, and branch payloads', () => {
+    expect(gitChangeSchema.parse({ path: 'a.ts', status: 'M' })).toEqual({ path: 'a.ts', status: 'M' })
+    expect(gitChangeSchema.parse({ path: 'b.ts', status: 'R', originalPath: 'a.ts' }))
+      .toEqual({ path: 'b.ts', status: 'R', originalPath: 'a.ts' })
+    expect(gitStatusRequestSchema.parse({ cwd: '/r' })).toEqual({ cwd: '/r' })
+    expect(() => gitStatusRequestSchema.parse({ cwd: '' })).toThrow()
+    expect(gitStatusValueSchema.parse({
+      branch: 'main', ahead: 0, behind: 0, staged: [], unstaged: [{ path: 'a.ts', status: 'M' }],
+    }).unstaged).toHaveLength(1)
+    expect(gitDiffRequestSchema.parse({ cwd: '/r', path: 'a.ts', staged: false }))
+      .toEqual({ cwd: '/r', path: 'a.ts', staged: false })
+    expect(gitDiffValueSchema.parse({ path: 'a.ts', oldText: null, newText: 'x' }))
+      .toEqual({ path: 'a.ts', oldText: null, newText: 'x' })
+    expect(gitStageRequestSchema.parse({ cwd: '/r', paths: ['a.ts'] })).toEqual({ cwd: '/r', paths: ['a.ts'] })
+    expect(gitStageValueSchema.parse({ ok: true })).toEqual({ ok: true })
+    expect(gitUnstageRequestSchema.parse({ cwd: '/r', paths: [] })).toEqual({ cwd: '/r', paths: [] })
+    expect(gitUnstageValueSchema.parse({ ok: true })).toEqual({ ok: true })
+    expect(gitCommitRequestSchema.parse({ cwd: '/r', message: 'done' })).toEqual({ cwd: '/r', message: 'done' })
+    expect(gitCommitValueSchema.parse({ commit: 'abc' })).toEqual({ commit: 'abc' })
+    expect(gitBranchRequestSchema.parse({ cwd: '/r' })).toEqual({ cwd: '/r' })
+    expect(gitBranchValueSchema.parse({ name: 'main' })).toEqual({ name: 'main' })
   })
 })
 

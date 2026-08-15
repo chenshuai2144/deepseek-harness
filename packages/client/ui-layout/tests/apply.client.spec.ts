@@ -48,9 +48,11 @@ describe('ui-layout client apply', () => {
     // The one register() call occupied 'root'…
     expect(slots.entries('root')).toHaveLength(1)
     // …and declared the three children in the ledger.
-    expect(slots.spec('sidebar')).toEqual({ kind: 'single', scope: 'root' })
+    expect(slots.spec('sidebar.agent')).toEqual({ kind: 'single', scope: 'root' })
+    expect(slots.spec('sidebar.scm')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('conversation')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(slots.spec('details')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.spec('details.scm')).toEqual({ kind: 'single', scope: 'session' })
   })
 
   it('injects no business face and attaches the layout actions', async () => {
@@ -58,7 +60,8 @@ describe('ui-layout client apply', () => {
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     const actions = {
-      setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), openDetails: vi.fn(), closeDetails: vi.fn(),
+      setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), setNarrow: vi.fn(),
+      openDetails: vi.fn(), closeDetails: vi.fn(), setSidebarView: vi.fn(), openScmDetails: vi.fn(),
     }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
     expect(injected).toEqual({})
@@ -99,7 +102,7 @@ describe('ui-layout client apply', () => {
     await fiber.dispose()
     expect(ctx.get('layout')).toBeUndefined()
     expect(slots.entries('root')).toHaveLength(0)
-    expect(slots.spec('sidebar')).toBeUndefined()
+    expect(slots.spec('sidebar.agent')).toBeUndefined()
     // The built-in root declaration survives entry teardown (runtime-owned).
     expect(slots.spec('root')).toEqual({ kind: 'single', scope: 'root' })
   })

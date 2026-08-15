@@ -160,6 +160,26 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
         return { rpcId: request.rpcId, result: { ok: true, value: { opened: true as const } } }
       },
     },
+    git: {
+      async status(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { branch: 'main', ahead: 0, behind: 0, staged: [], unstaged: [] } } }
+      },
+      async diff(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { path: request.payload.path, oldText: null, newText: '' } } }
+      },
+      async stage(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { ok: true as const } } }
+      },
+      async unstage(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { ok: true as const } } }
+      },
+      async commit(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { commit: 'test' } } }
+      },
+      async branch(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { name: 'main' } } }
+      },
+    },
     workspace: {
       async list(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { items: [], archivedSessionIds: [] } } }

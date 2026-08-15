@@ -1,11 +1,13 @@
 /**
  * The root entry's transient layout store: panel geometry as plain widths in
- * px (0 = closed). Module level exports the factory only — a module-level
- * handle would pin the store's identity in the module
- * cache (a de-facto singleton surviving plugin reloads). register() receives
- * the factory (exclusive use: the framework instantiates per entry), AppFrame
- * derives its PropsStore share from the return type, and the service face
- * receives the bound actions through the registration's inject hook.
+ * px (0 = closed), plus which sidebar occupant is showing and the SCM
+ * details selection.
+ * Module level exports the factory only — a module-level handle would pin the
+ * store's identity in the module cache (a de-facto singleton surviving plugin
+ * reloads). register() receives the factory (exclusive use: the framework
+ * instantiates per entry), AppFrame derives its PropsStore share from the
+ * return type, and the service face receives the bound actions through the
+ * registration's inject hook.
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
 import {
@@ -13,14 +15,38 @@ import {
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from './columns.ts'
 
+/** Sidebar occupant. The frame is an Agent workbench, not an IDE activity bar. */
+export type SidebarView = 'agent' | 'scm'
+
+/** Which details occupant the frame renders while the panel is open. */
+export type DetailsView = 'conversation' | 'scm'
+
+/** SCM file the details column should show; viewing state, not a session event. */
+export interface ScmSelection {
+  /** Workspace-relative path. */
+  path: string
+  /** True when the row is the staged copy. */
+  staged: boolean
+}
+
 /**
  * Layout store state: panel width preferences in px (0 = closed), plus the
  * narrow-viewport pair — `narrow` mirrors AppFrame's breakpoint reading
  * (viewport < SIDEBAR_AUTO_COLLAPSE) so toggleSidebar can pick semantics, and
  * `narrowExpanded` is the manual override that re-expands the auto-collapsed
  * sidebar over the squeezed center without rewriting the width preference.
+ * `sidebarView` / `detailsView` / `scmSelection` are viewing state and never
+ * enter the session log.
  */
-type LayoutState = { sidebar: number; details: number; narrow: boolean; narrowExpanded: boolean }
+export type LayoutState = {
+  sidebar: number
+  details: number
+  narrow: boolean
+  narrowExpanded: boolean
+  sidebarView: SidebarView
+  detailsView: DetailsView
+  scmSelection: ScmSelection | null
+}
 
 /**
  * Annotation twin of the actions literal below (the export needs a declared
@@ -33,6 +59,8 @@ type LayoutActions = {
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openDetails: (draft: LayoutState) => void
   closeDetails: (draft: LayoutState) => void
+  setSidebarView: (draft: LayoutState, view: SidebarView) => void
+  openScmDetails: (draft: LayoutState, selection: ScmSelection) => void
 }
 
 /**
@@ -47,7 +75,15 @@ type LayoutActions = {
  */
 export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions>  {
   const handle = defineStore({
-    init: (): LayoutState => ({ sidebar: SIDEBAR_DEFAULT, details: 0, narrow: false, narrowExpanded: false }),
+    init: (): LayoutState => ({
+      sidebar: SIDEBAR_DEFAULT,
+      details: 0,
+      narrow: false,
+      narrowExpanded: false,
+      sidebarView: 'agent',
+      detailsView: 'conversation',
+      scmSelection: null,
+    }),
     actions: {
       setSidebar: (d, px: number) => { d.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX) },
       setDetails: (d, px: number) => { d.details = clampWidth(px, DETAILS_MIN, DETAILS_MAX) },
@@ -64,8 +100,17 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         d.narrow = narrow
         d.narrowExpanded = false
       },
-      openDetails: (d) => { if (d.details === 0) d.details = DETAILS_DEFAULT },
+      openDetails: (d) => {
+        d.detailsView = 'conversation'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
       closeDetails: (d) => { d.details = 0 },
+      setSidebarView: (d, view: SidebarView) => { d.sidebarView = view },
+      openScmDetails: (d, selection: ScmSelection) => {
+        d.scmSelection = selection
+        d.detailsView = 'scm'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
     },
   })
   return handle

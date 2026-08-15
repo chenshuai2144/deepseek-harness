@@ -231,6 +231,18 @@
         "tests/**/*.tsx"
       ]
     },
+    "packages/client/ui-scm": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
     "website": {
       "project": [
         "**/*.ts"
@@ -726,6 +738,19 @@
         "react-dom"
       ]
     },
+    "apps/desktop": {
+      "entry": [
+        "electron-main.mjs",
+        "src/main.ts",
+        "src/host.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@deepseek-ai/dsh"
+      ]
+    },
     "apps/cli": {
       "entry": [
         "tests/**/*.spec.ts",
@@ -779,6 +804,11 @@
       ]
     },
     "packages/bundle/web-app": {
+      "ignoreDependencies": [
+        "@deepseek-ai/.+"
+      ]
+    },
+    "packages/bundle/desktop-app": {
       "ignoreDependencies": [
         "@deepseek-ai/.+"
       ]

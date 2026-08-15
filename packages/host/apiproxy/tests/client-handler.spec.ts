@@ -21,6 +21,7 @@ function scriptedApi(overrides: {
   sessions?: Partial<ApiProxy['sessions']>
   subagents?: Partial<ApiProxy['subagents']>
   host?: Partial<ApiProxy['host']>
+  git?: Partial<ApiProxy['git']>
   skills?: Partial<ApiProxy['skills']>
   agentPresets?: Partial<ApiProxy['agentPresets']>
   events?: Partial<ApiProxy['events']>
@@ -79,6 +80,15 @@ function scriptedApi(overrides: {
       createDirectory: r => ok(r, { path: '/t/new' }),
       openPath: r => ok(r, { opened: true as const }),
       ...overrides.host,
+    },
+    git: {
+      status: r => ok(r, { branch: 'main', ahead: 0, behind: 0, staged: [], unstaged: [] }),
+      diff: r => ok(r, { path: r.payload.path, oldText: null, newText: '' }),
+      stage: r => ok(r, { ok: true as const }),
+      unstage: r => ok(r, { ok: true as const }),
+      commit: r => ok(r, { commit: 'test' }),
+      branch: r => ok(r, { name: 'main' }),
+      ...overrides.git,
     },
     workspace: {
       list: r => ok(r, { items: [], archivedSessionIds: [] }),
@@ -237,6 +247,19 @@ describe('unary round trip', () => {
     expect(anchored.result.ok).toBe(true)
     const appended = await c.workspace.insertSessionBefore({ workspaceId: 'w1' as never, sessionId: sid('s1') })
     expect(appended.result.ok).toBe(true)
+  })
+
+  it('routes git status, diff, stage, and commit through the wire', async () => {
+    const c = client(scriptedApi())
+    const cwd = '/repo'
+    expect((await c.git.status({ cwd })).result)
+      .toEqual({ ok: true, value: { branch: 'main', ahead: 0, behind: 0, staged: [], unstaged: [] } })
+    expect((await c.git.diff({ cwd, path: 'a.ts', staged: false })).result)
+      .toEqual({ ok: true, value: { path: 'a.ts', oldText: null, newText: '' } })
+    expect((await c.git.stage({ cwd, paths: ['a.ts'] })).result).toEqual({ ok: true, value: { ok: true } })
+    expect((await c.git.unstage({ cwd, paths: ['a.ts'] })).result).toEqual({ ok: true, value: { ok: true } })
+    expect((await c.git.commit({ cwd, message: 'done' })).result).toEqual({ ok: true, value: { commit: 'test' } })
+    expect((await c.git.branch({ cwd })).result).toEqual({ ok: true, value: { name: 'main' } })
   })
 
   it('routes the agent-preset roster and switch through the wire', async () => {

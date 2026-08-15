@@ -182,6 +182,19 @@ export class FakeApiClient implements IApiClient {
     openPath: (payload: unknown) => this.record('host.openPath', payload, this.onOpenPath(payload)),
   }
 
+  readonly git: IApiClient['git'] = {
+    status: payload => this.record('git.status', payload, Promise.resolve(ok({
+      branch: 'main', ahead: 0, behind: 0, staged: [], unstaged: [],
+    }))),
+    diff: payload => this.record('git.diff', payload, Promise.resolve(ok({
+      path: (payload as { path: string }).path, oldText: null, newText: '',
+    }))),
+    stage: payload => this.record('git.stage', payload, Promise.resolve(ok({ ok: true as const }))),
+    unstage: payload => this.record('git.unstage', payload, Promise.resolve(ok({ ok: true as const }))),
+    commit: payload => this.record('git.commit', payload, Promise.resolve(ok({ commit: 'fake' }))),
+    branch: payload => this.record('git.branch', payload, Promise.resolve(ok({ name: 'main' }))),
+  }
+
   // The archive-set field defaults at the binding below so list stubs keep
   // the pre-archive `{ items }` shape; a stub carrying the field wins.
   onWorkspaceList: (payload: unknown) => Promise<RpcResponse<{ items: never[]; archivedSessionIds?: never[] }>> =

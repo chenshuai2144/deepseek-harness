@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { mkdir, stat } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, isAbsolute } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
@@ -99,6 +99,8 @@ import type {
 } from '@deepseek-ai/dsh-user-questions'
 import { UserQuestionError } from '@deepseek-ai/dsh-user-questions'
 import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
+import { GitError } from '@deepseek-ai/dsh-git'
+import type {} from '@deepseek-ai/dsh-git'
 import {
   ApiRemoteSessionNotFound as SessionNotFound,
   ApiRemoteSubagentSessionOwnership as SubagentSessionOwnership,
@@ -630,6 +632,27 @@ function directoryError(error: unknown): RpcError {
     return { code: error.code, message: error.message, details: { path: error.path } }
   }
   return { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} }
+}
+
+/** Map a Git seam failure onto the wire error vocabulary. */
+function gitError(error: unknown): RpcError {
+  if (error instanceof GitError) {
+    const code = error.code === 'not-a-repository' ? 'git-not-a-repository'
+      : error.code === 'empty-message' ? 'git-empty-message'
+        : error.code
+    return { code, message: error.message, details: { cwd: error.cwd } }
+  }
+  return { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} }
+}
+
+/** Refuse a relative workspace root at the wire boundary. */
+function gitCwdError(request: RpcRequest<{ cwd: string }>): RpcError | undefined {
+  if (isAbsolute(request.payload.cwd)) return undefined
+  return {
+    code: 'git-failed',
+    message: `git cwd must be an absolute path: ${request.payload.cwd}`,
+    details: { cwd: request.payload.cwd },
+  }
 }
 
 /** Resolved Agent model and project-directory defaults consumed by the API implementation. */
@@ -3007,6 +3030,100 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
       async openPath(request, signal) {
         return openPath(request, request.payload.path, signal)
+      },
+    },
+
+    git: {
+      async status(request, signal) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.status needs ctx.git', details: {} })
+        }
+        try {
+          return ok(request, await git.status(request.payload.cwd, signal))
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'git status was aborted', details: {} })
+          }
+          return err(request, gitError(error))
+        }
+      },
+
+      async diff(request, signal) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.diff needs ctx.git', details: {} })
+        }
+        try {
+          return ok(request, await git.diff(request.payload.cwd, request.payload.path, request.payload.staged, signal))
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'git diff was aborted', details: {} })
+          }
+          return err(request, gitError(error))
+        }
+      },
+
+      async stage(request) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.stage needs ctx.git', details: {} })
+        }
+        try {
+          await git.stage(request.payload.cwd, request.payload.paths)
+          return ok(request, { ok: true as const })
+        } catch (error: unknown) {
+          return err(request, gitError(error))
+        }
+      },
+
+      async unstage(request) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.unstage needs ctx.git', details: {} })
+        }
+        try {
+          await git.unstage(request.payload.cwd, request.payload.paths)
+          return ok(request, { ok: true as const })
+        } catch (error: unknown) {
+          return err(request, gitError(error))
+        }
+      },
+
+      async commit(request) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.commit needs ctx.git', details: {} })
+        }
+        try {
+          return ok(request, await git.commit(request.payload.cwd, request.payload.message))
+        } catch (error: unknown) {
+          return err(request, gitError(error))
+        }
+      },
+
+      async branch(request) {
+        const invalid = gitCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const git = ctx.get('git')
+        if (git === undefined) {
+          return err(request, { code: 'git-unavailable', message: 'git.branch needs ctx.git', details: {} })
+        }
+        try {
+          return ok(request, await git.branch(request.payload.cwd))
+        } catch (error: unknown) {
+          return err(request, gitError(error))
+        }
       },
     },
 

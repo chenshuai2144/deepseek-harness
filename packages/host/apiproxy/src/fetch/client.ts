@@ -18,6 +18,10 @@ import {
   hostListDirectoryValueSchema, hostOpenPathValueSchema, hostPickDirectoryValueSchema,
 } from '../api/host.schema.ts'
 import {
+  gitBranchValueSchema, gitCommitValueSchema, gitDiffValueSchema,
+  gitStageValueSchema, gitStatusValueSchema, gitUnstageValueSchema,
+} from '../api/git.schema.ts'
+import {
   sessionCancelValueSchema,
   sessionAttachmentValueSchema,
   sessionCreateValueSchema,
@@ -112,6 +116,14 @@ export interface IApiClient {
     createDirectory(payload: RequestPayload<'host.createDirectory'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'host.createDirectory'>>>
     openPath(payload: RequestPayload<'host.openPath'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'host.openPath'>>>
   }
+  git: {
+    status(payload: RequestPayload<'git.status'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.status'>>>
+    diff(payload: RequestPayload<'git.diff'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.diff'>>>
+    stage(payload: RequestPayload<'git.stage'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.stage'>>>
+    unstage(payload: RequestPayload<'git.unstage'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.unstage'>>>
+    commit(payload: RequestPayload<'git.commit'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.commit'>>>
+    branch(payload: RequestPayload<'git.branch'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.branch'>>>
+  }
   workspace: {
     list(payload: RequestPayload<'workspace.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.list'>>>
     create(payload: RequestPayload<'workspace.create'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.create'>>>
@@ -191,6 +203,12 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'host.listDirectory': hostListDirectoryValueSchema,
   'host.createDirectory': hostCreateDirectoryValueSchema,
   'host.openPath': hostOpenPathValueSchema,
+  'git.status': gitStatusValueSchema,
+  'git.diff': gitDiffValueSchema,
+  'git.stage': gitStageValueSchema,
+  'git.unstage': gitUnstageValueSchema,
+  'git.commit': gitCommitValueSchema,
+  'git.branch': gitBranchValueSchema,
   'workspace.list': workspaceListValueSchema,
   'workspace.create': workspaceCreateValueSchema,
   'workspace.rename': workspaceRenameValueSchema,
@@ -441,6 +459,15 @@ export abstract class AbstractApiClient implements IApiClient {
     listDirectory: (payload, signal) => this.callUnary('host.listDirectory', payload, signal),
     createDirectory: (payload, signal) => this.callUnary('host.createDirectory', payload, signal),
     openPath: (payload, signal) => this.callUnary('host.openPath', payload, signal),
+  }
+
+  readonly git: IApiClient['git'] = {
+    status: (payload, signal) => this.callUnary('git.status', payload, signal),
+    diff: (payload, signal) => this.callUnary('git.diff', payload, signal),
+    stage: (payload, signal) => this.callUnary('git.stage', payload, signal),
+    unstage: (payload, signal) => this.callUnary('git.unstage', payload, signal),
+    commit: (payload, signal) => this.callUnary('git.commit', payload, signal),
+    branch: (payload, signal) => this.callUnary('git.branch', payload, signal),
   }
 
   readonly workspace: IApiClient['workspace'] = {

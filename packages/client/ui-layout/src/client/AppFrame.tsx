@@ -1,27 +1,34 @@
 /**
- * Three-column shell frame, registered into the built-in 'root' slot (the web
+ * Workbench shell frame, registered into the built-in 'root' slot (the web
  * shell renders only 'root'). Owns the grid tracks (sidebar | center |
- * details), the drag handles (pointer capture + rAF throttle), the concession
- * chain (columns.ts), and the child-slot render decisions: the sidebar slot
- * renders HERE with live parameters from the concession solve, and the
- * session-aware occupants render in fixed column positions; strict entries
- * gate themselves on current-session availability while session-maybe
- * entries retain identity. Pure component: everything arrives
- * through the three framework shares — zero cordis or framework imports,
- * zero self-made hooks.
+ * details), the drag handles (pointer capture + rAF throttle), the
+ * concession chain (columns.ts), and the child-slot render decisions: the
+ * selected sidebar occupant renders HERE with live parameters from the
+ * concession solve, and the session-aware occupants render in fixed column
+ * positions. Pure component: everything arrives through the framework
+ * shares — zero cordis or framework imports, zero self-made hooks.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
-import type { createLayoutStore } from './stores.ts'
+import type { createLayoutStore, SidebarView } from './stores.ts'
 import css from './AppFrame.module.css'
 
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
+  & PropsRenderSlots<
+    | 'sidebar.agent' | 'sidebar.scm'
+    | 'conversation' | 'details' | 'details.scm' | 'shell.overlay'
+  >
   & PropsStore<ReturnType<typeof createLayoutStore>>
+
+/** Sidebar slot name for one occupant. */
+const SIDEBAR_SLOT: Record<SidebarView, 'sidebar.agent' | 'sidebar.scm'> = {
+  agent: 'sidebar.agent',
+  scm: 'sidebar.scm',
+}
 
 /** Center column grid item (session-body building block). */
 function CenterColumn(props: { children?: ReactNode }) {
@@ -83,7 +90,7 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
   )
 }
 
-/** The three-column frame (see module doc). */
+/** The workbench frame (see module doc). */
 export function AppFrame({
   useStore,
   useSessions,
@@ -161,6 +168,9 @@ export function AppFrame({
     actions.setDetails(detailsBase.current - dx)
   }, [actions])
 
+  const sidebarSlot = SIDEBAR_SLOT[panels.sidebarView]
+  const sidebarOwner = { collapsed: sidebarCollapsed, width: cols.sidebar }
+
   return (
     <div
       ref={frameRef}
@@ -169,33 +179,41 @@ export function AppFrame({
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-details-collapsed={cols.details === 0 || undefined}
       data-dragging={dragging || undefined}
+      data-sidebar-view={panels.sidebarView}
+      data-details-view={panels.detailsView}
     >
       <div className={css.sidebarCol}>
-        {/* Render-site slot call with live concession output: a closed
-            sidebar keeps the mounted slot at the compact-rail width, and the
-            component sees its rendered state as owner params decided here
-            (collapsed follows the resolved rail, so a derived auto-collapse
-            renders the rail UI too). */}
-        {renderSlot('sidebar', {
-          collapsed: sidebarCollapsed,
-          width: cols.sidebar,
-        })}
+        {renderSlot(sidebarSlot, sidebarOwner)}
       </div>
       <>
-        {/* Both column occupants stay at fixed tree positions from first
-            paint — no loading gate: a bare status line reads worse than
-            the shell's own pending rendering. The conversation
-            is session-maybe; the strict details entry naturally renders
-            empty while no session is current. */}
         <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
-        <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
+        <DetailsColumn>
+          {panels.detailsView === 'scm'
+            ? renderSlot('details.scm', { selection: panels.scmSelection })
+            : renderSlot('details', {})}
+        </DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
       </div>
-      {/* The collapsed rail is fixed-width: no resize handle while closed. */}
-      {!sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
-      {cols.details > 0 && <DragHandle side="details" left={viewport - cols.details} onStart={onDetailsStart} onDrag={onDetailsDrag} onEnd={onDragEnd} />}
+      {!sidebarCollapsed && (
+        <DragHandle
+          side="sidebar"
+          left={cols.sidebar}
+          onStart={onSidebarStart}
+          onDrag={onSidebarDrag}
+          onEnd={onDragEnd}
+        />
+      )}
+      {cols.details > 0 && (
+        <DragHandle
+          side="details"
+          left={viewport - cols.details}
+          onStart={onDetailsStart}
+          onDrag={onDetailsDrag}
+          onEnd={onDragEnd}
+        />
+      )}
     </div>
   )
 }

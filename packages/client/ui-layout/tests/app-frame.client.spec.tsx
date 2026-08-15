@@ -56,13 +56,15 @@ function mountFrame() {
   window.innerWidth = frameWidth // first-render viewport source before the observer fires
   const instance = createLayoutStore().create()
   const slotCalls: { key: string; props: unknown }[] = []
-  const renderSlot = ((key: string, owner: object) => {
+  const renderSlot = ((key: string, owner: object, opts?: { fallback?: React.ReactNode }) => {
     slotCalls.push({ key, props: owner })
-    if (key === 'sidebar') return <div data-testid="sidebar-content" />
+    if (key === 'sidebar.agent') return <div data-testid="sidebar-content" />
+    if (key === 'sidebar.scm') return <div data-testid="scm-content" />
+    if (key === 'details.scm') return <div data-testid="scm-details-content" />
     if (key === 'conversation') return <div data-testid="center-content" />
     if (key === 'details') return <div data-testid="details-content" />
     if (key === 'conversation.empty') return <div data-testid="empty-content" />
-    return <div data-testid="other-content" />
+    return opts?.fallback ?? <div data-testid="other-content" />
   }) as AppFrameProps['renderSlot']
   const useSessions = ((sel: (s: SessionListState) => unknown) => {
     const current = selectedSession.current
@@ -142,6 +144,16 @@ describe('AppFrame', () => {
     expect(tracks(frame)).toEqual([280, 0])
   })
 
+  it('setSidebarView switches the sidebar occupant without an activity bar', () => {
+    const { frame, instance, getByTestId, rerenderFrame } = mountFrame()
+    expect(frame.querySelector('[data-testid="activity-bar"]')).toBeNull()
+    expect(getByTestId('sidebar-content')).toBeTruthy()
+    act(() => { instance.actions.setSidebarView('scm') })
+    rerenderFrame()
+    expect(frame.getAttribute('data-sidebar-view')).toBe('scm')
+    expect(getByTestId('scm-content')).toBeTruthy()
+  })
+
   it('renders the session pair with empty owner shares (sessionId is framework-standard)', () => {
     const { slotCalls, getByTestId } = mountFrame()
     expect(getByTestId('center-content')).toBeTruthy()
@@ -216,7 +228,7 @@ describe('AppFrame', () => {
 
   it('sidebar slot receives live concession output as owner props', () => {
     const { slotCalls } = mountFrame()
-    expect(slotCalls.find(c => c.key === 'sidebar')!.props).toEqual({ collapsed: false, width: 280 })
+    expect(slotCalls.find(c => c.key === 'sidebar.agent')!.props).toEqual({ collapsed: false, width: 280 })
   })
 
   it('sidebar drag widens through rAF-batched pointer moves', () => {
@@ -240,7 +252,7 @@ describe('AppFrame', () => {
     act(() => { instance.actions.openDetails() })
     expect(tracks(frame)).toEqual([280, 330])
     const handles = frame.querySelectorAll('[class*="handle"]')
-    drag(handles[1]!, 920, 930) // shrink by 10 from the rendered width
+    drag(handles[1]!, 968, 978) // shrink by 10 from the rendered width
     expect(instance.getSnapshot().details).toBe(320)
   })
 
@@ -257,7 +269,7 @@ describe('AppFrame', () => {
     expect(tracks(frame)).toEqual([SIDEBAR_COLLAPSED, 0])
     expect(getByTestId('sidebar-content')).toBeTruthy()
     expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(true)
-    const lastSidebarCall = slotCalls.filter(c => c.key === 'sidebar').at(-1)!
+    const lastSidebarCall = slotCalls.filter(c => c.key === 'sidebar.agent').at(-1)!
     expect(lastSidebarCall.props).toEqual({ collapsed: true, width: SIDEBAR_COLLAPSED })
   })
 
@@ -290,7 +302,7 @@ describe('AppFrame — narrow-viewport auto-collapse', () => {
     const { frame, slotCalls } = mountFrame()
     expect(tracks(frame)).toEqual([SIDEBAR_COLLAPSED, 0])
     expect(frame.hasAttribute('data-sidebar-collapsed')).toBe(true)
-    expect(slotCalls.filter(c => c.key === 'sidebar').at(-1)!.props).toEqual({ collapsed: true, width: SIDEBAR_COLLAPSED })
+    expect(slotCalls.filter(c => c.key === 'sidebar.agent').at(-1)!.props).toEqual({ collapsed: true, width: SIDEBAR_COLLAPSED })
     expect(frame.querySelectorAll('[class*="handle"]')).toHaveLength(0)
   })
 

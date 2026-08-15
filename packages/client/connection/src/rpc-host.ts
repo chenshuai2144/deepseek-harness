@@ -42,14 +42,43 @@ declare module '@deepseek-ai/cordis' {
 /** Host Connection service whose channel registrations belong to the caller fiber. */
 export class HostConnectionService extends Service implements HostConnectionHandle {
   private readonly interceptors = new Map<string, ConnectionRpcInterceptor>()
+  private readonly dedicated = new Map<string, FetchHandler>()
+  private sharedApiFetch: FetchHandler | undefined
 
   /**
-   * Provide the Host half over the active HTTP server.
+   * Provide the Host half. HTTP routes register only when webServer is present.
    * @param ctx - owning Connection plugin context.
    * @param trustedHosts - deployment authorities accepted by trusted-host channels.
    */
   constructor(ctx: Context, private readonly trustedHosts: readonly string[]) {
     super(ctx, 'connection')
+  }
+
+  /**
+   * Install the shared `/api` fetch handler used by HTTP and IPC.
+   * @param handler - interceptor-aware `/api` fallback composed by the plugin.
+   */
+  setSharedApiFetch(handler: FetchHandler): void {
+    this.sharedApiFetch = handler
+  }
+
+  /**
+   * Dispatch one WHATWG request to `/api` or a dedicated RPC channel.
+   * @param input - request URL or Request.
+   * @param init - optional fetch init when `input` is a URL or string.
+   * @returns the channel handler's Response.
+   */
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    const request = input instanceof Request ? input : new Request(input, init)
+    const pathname = new URL(request.url).pathname
+    if (pathname === API_PATH || pathname.startsWith(`${API_PATH}/`)) {
+      return (this.sharedApiFetch ?? { fetch: () => Promise.resolve(new Response('not found', { status: 404 })) })
+        .fetch(request)
+    }
+    for (const [channel, handler] of this.dedicated) {
+      if (pathname === channel || pathname.startsWith(`${channel}/`)) return handler.fetch(request)
+    }
+    return Promise.resolve(new Response('not found', { status: 404 }))
   }
 
   /** Generic channel registry scoped to the Context reading this service. */
@@ -108,10 +137,18 @@ export class HostConnectionService extends Service implements HostConnectionHand
         await bridge(req, res, fetchHandler)
       },
     }
-    return owner.effect(
-      () => owner.webServer.register(route),
-      `client-connection: ${channel} rpc channel`,
-    )
+    return owner.effect(() => {
+      if (this.dedicated.has(channel)) {
+        throw new Error(`duplicate route ${channel}`)
+      }
+      this.dedicated.set(channel, fetchHandler)
+      const webServer = owner.get('webServer')
+      const disposeHttp = webServer === undefined ? undefined : webServer.register(route)
+      return () => {
+        this.dedicated.delete(channel)
+        disposeHttp?.()
+      }
+    }, `client-connection: ${channel} rpc channel`)
   }
 
   private registerInterceptor(

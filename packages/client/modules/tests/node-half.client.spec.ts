@@ -68,6 +68,20 @@ function construct(packageNames: string[]): ClientModuleRegistry {
   return constructWithRoute(packageNames).service
 }
 
+/** Construct the node-half service with no HTTP carrier. */
+function constructWithoutWebServer(packageNames: string[]): ClientModuleRegistry {
+  const ctx = new Context()
+  ctx.baseUrl = pathToFileURL(root!).href + '/'
+  ctx.provide('loader', {
+    *entries() {
+      for (const packageName of packageNames) {
+        yield { options: { name: packageName }, fiber: {}, disabled: false }
+      }
+    },
+  })
+  return new ClientModuleRegistry(ctx)
+}
+
 describe('client bundle activation', () => {
   it('allows sibling dsh roles', () => {
     const currentName = '@fixture/current-client-field'
@@ -148,5 +162,15 @@ describe('client bundle activation', () => {
       'cache-control': 'no-cache',
     })
     expect(body).toBe(map)
+  })
+
+  it('composes graph() and clientPath() without a webServer', () => {
+    const packageName = '@fixture/ipc-only'
+    const clientPath = writePackage(packageName)
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'module.exports = {}\n')
+    const service = constructWithoutWebServer([packageName])
+    expect(service.graph().entries.map(entry => entry.id)).toEqual([packageName])
+    expect(service.clientPath(packageName)).toBe(clientPath)
   })
 })

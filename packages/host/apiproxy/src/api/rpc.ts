@@ -45,6 +45,11 @@ export interface RpcErrorDetailsMap {
   'directory-exists': { path: string }
   'directory-create-failed': { path: string }
   'directory-picker-unavailable': { capability: string }
+  'git-unavailable': {}
+  'git-not-a-repository': { cwd: string }
+  'git-not-found': { cwd: string }
+  'git-empty-message': { cwd: string }
+  'git-failed': { cwd: string }
   'agent-preset-read-only': { agentPreset: string; reason: string }
   'agent-preset-locked': { sessionId: SessionId; agentPreset: string }
   'agent-preset-conflict': { sessionId: SessionId; requestedPreset: string; existingPreset?: string }

@@ -29,7 +29,7 @@ async function detailsTrack(page: Page): Promise<number> {
   })
 }
 
-/** First AppFrame grid track in CSS pixels. */
+/** Sidebar AppFrame grid track in CSS pixels. */
 async function sidebarTrack(page: Page): Promise<number> {
   return await appFrame(page).evaluate((element) => {
     const tracks = getComputedStyle(element).gridTemplateColumns.split(' ')

@@ -37,6 +37,11 @@ switch (invocation.mode) {
     })
     break
   }
+  case 'desktop': {
+    const { runDesktop } = await import('./desktop.ts')
+    await runDesktop({ patches: invocation.patches, args: invocation.args })
+    break
+  }
   case 'plugin': {
     const { runPlugin } = await import('./plugin.ts')
     process.exit(runPlugin(invocation.profile, invocation.args))

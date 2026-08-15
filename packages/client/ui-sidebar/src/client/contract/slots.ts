@@ -8,8 +8,8 @@
  * actions in `sidebar.footer.action`.
  */
 import type { PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: pulls ui-layout's SlotMap merge (the 'sidebar' entry) into every
-// program that sees this contract, so PropsRuntime<'sidebar'> resolves.
+// Type-only: pulls ui-layout's SlotMap merge (the 'sidebar.agent' entry) into
+// every program that sees this contract, so PropsRuntime<'sidebar.agent'> resolves.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 
@@ -18,19 +18,19 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
-     * package's 'sidebar' entry (declaring is claiming); ui-workspace
+     * package's 'sidebar.agent' entry (declaring is claiming); ui-workspace
      * registers the browser.
      */
     'sidebar.workspaces': { kind: 'single'; scope: 'root'; owner: SidebarSectionOwnerProps }
     /**
      * The settings seat at the sidebar foot. Declared by this package's
-     * 'sidebar' entry; ui-settings registers its trigger row + modal panel.
+     * 'sidebar.agent' entry; ui-settings registers its trigger row + modal panel.
      * The sidebar passes only its column state — it holds no settings state.
      */
     'sidebar.settings': { kind: 'single'; scope: 'root'; owner: SidebarSettingsOwnerProps }
     /**
      * Optional actions beside Settings at the sidebar foot. Declared by this
-     * package's 'sidebar' entry; each action receives only the column state.
+     * package's 'sidebar.agent' entry; each action receives only the column state.
      */
     'sidebar.footer.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
   }
@@ -84,6 +84,6 @@ export type SidebarRootInjected = {
  * seat. No store is registered.
  */
 export type SidebarRootComponentProps =
-  PropsRuntime<'sidebar'>
+  PropsRuntime<'sidebar.agent'>
   & PropsRenderSlots<'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'>
   & SidebarRootInjected & PropsLocale<'sidebar'>

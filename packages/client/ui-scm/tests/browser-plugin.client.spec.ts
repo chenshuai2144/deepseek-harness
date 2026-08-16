@@ -20,9 +20,8 @@ async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugi
   ctx.slots.register({
     name: 'root',
     children: {
-      'sidebar.scm': { kind: 'single', scope: 'root' },
+      'details.changes': { kind: 'single', scope: 'session' },
       'details.scm': { kind: 'single', scope: 'session' },
-      'sidebar.footer.action': { kind: 'list', scope: 'root' },
     },
   } as never, () => null)
   ctx.provide('connection', {
@@ -37,7 +36,7 @@ async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugi
     },
     isLoopback: true,
   } as never)
-  ctx.provide('layout', { openScmDetails: vi.fn(), setSidebarView: vi.fn() })
+  ctx.provide('layout', { openScmDetails: vi.fn(), openWorkspaceHome: vi.fn(), openChanges: vi.fn() })
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
   await ctx.plugin({ inject: localeInject, apply: applyLocale }).await()
@@ -53,13 +52,11 @@ describe('ui-scm browser half', () => {
 
   it('registers both SCM slots, and fiber teardown removes them', async () => {
     const { ctx, fiber } = await bench()
-    expect(ctx.slots.entries('sidebar.scm')).toHaveLength(1)
+    expect(ctx.slots.entries('details.changes')).toHaveLength(1)
     expect(ctx.slots.entries('details.scm')).toHaveLength(1)
-    expect(ctx.slots.entries('sidebar.footer.action')).toHaveLength(1)
     await fiber.dispose()
-    expect(ctx.slots.entries('sidebar.scm')).toHaveLength(0)
+    expect(ctx.slots.entries('details.changes')).toHaveLength(0)
     expect(ctx.slots.entries('details.scm')).toHaveLength(0)
-    expect(ctx.slots.entries('sidebar.footer.action')).toHaveLength(0)
   })
 
   it('registers both dictionaries under its own namespace and releases them with the fiber', async () => {
@@ -78,7 +75,7 @@ describe('ui-scm browser half', () => {
 
   it('binds git RPC and layout writes through the slot inject faces', async () => {
     const { ctx } = await bench()
-    const panel = ctx.slots.entries('sidebar.scm')[0]
+    const panel = ctx.slots.entries('details.changes')[0]
     const details = ctx.slots.entries('details.scm')[0]
     const panelFace = panel?.inject?.() as {
       openScmDetails: (selection: { path: string; staged: boolean }) => void

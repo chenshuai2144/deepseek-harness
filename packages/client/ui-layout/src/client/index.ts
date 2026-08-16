@@ -10,11 +10,14 @@
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
+import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { PanelActions } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore, type ScmSelection } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
+import { WorkspaceHome } from './WorkspaceHome.tsx'
+import { en, NS, zh, type LayoutKey } from './locales.ts'
 
 // Contract exports only (export-convergence rule: cross-package consumers
 // keep a symbol exported; test-only/package-internal symbols live off /src).
@@ -33,6 +36,10 @@ declare module '@deepseek-ai/cordis' {
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** Workspace-home chrome and live tiles. */
+    layout: LayoutKey
+  }
   interface SlotMap {
     // The 'root' entry itself is the runtime's built-in slot (declared
     // there); these children are declared by the same register() call that
@@ -46,10 +53,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar.agent': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
-     * Source-control sidebar view. OCCUPIED by ui-scm. Opened from the agent
-     * sidebar foot, not an IDE activity bar.
+     * Right-column workspace home. OCCUPIED by this package's WorkspaceHome.
+     * Live tiles open implemented occupants; File / Terminal / Browser stay
+     * off the home until they have a real view.
      */
-    'sidebar.scm': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
+    'details.home': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    /**
+     * Source-control list in the right column. OCCUPIED by ui-scm. Opened
+     * from the workspace home Changes tile, not an IDE activity bar.
+     */
+    'details.changes': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
     /**
      * The whole center column, across both the no-session hero and a live
      * conversation. OCCUPIED by ui-conversation's ConversationRoot, which
@@ -119,15 +132,17 @@ export interface ScmDetailsOwnerProps {
 }
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme']
+export const inject = ['slots', 'theme', 'locale']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
- * into 'root' with the four child-slot declarations, the layout store seat,
- * and the inject hook that hands the store's bound actions to the service.
+ * into 'root' with the workbench child-slot declarations, the layout store
+ * seat, the workspace-home occupant, and the inject hook that hands the
+ * store's bound actions to the service.
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-layout: dictionaries')
   const layout = new LayoutController()
   ctx.effect(() => {
     const disposeService = ctx.reflect.provide('layout', layout)
@@ -135,9 +150,10 @@ export function apply(ctx: ClientContext): void {
       name: 'root',
       children: {
         'sidebar.agent': { kind: 'single', scope: 'root' },
-        'sidebar.scm': { kind: 'single', scope: 'root' },
         'conversation': { kind: 'single', scope: 'session-maybe' },
         'details': { kind: 'single', scope: 'session' },
+        'details.home': { kind: 'single', scope: 'session' },
+        'details.changes': { kind: 'single', scope: 'session' },
         'details.scm': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
@@ -151,7 +167,17 @@ export function apply(ctx: ClientContext): void {
         return {}
       },
     }, AppFrame)
+    const disposeHome = ctx.slots.register({
+      name: 'details.home',
+      locale: NS,
+      inject: () => ({
+        openChanges: () => { layout.openChanges() },
+        openWorkspaceHome: () => { layout.openWorkspaceHome() },
+        closeDetails: () => { layout.closeDetails() },
+      }),
+    }, WorkspaceHome)
     return () => {
+      disposeHome()
       disposeRegistration()
       // provide()'s disposer settles asynchronously; teardown is synchronous fire-and-forget.
       void disposeService()

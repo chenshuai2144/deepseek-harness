@@ -1,7 +1,7 @@
 /**
  * The root entry's transient layout store: panel geometry as plain widths in
- * px (0 = closed), plus which sidebar occupant is showing and the SCM
- * details selection.
+ * px (0 = closed), plus which sidebar occupant is showing, which workspace
+ * occupant the right column shows, and the SCM file selection.
  * Module level exports the factory only — a module-level handle would pin the
  * store's identity in the module cache (a de-facto singleton surviving plugin
  * reloads). register() receives the factory (exclusive use: the framework
@@ -19,7 +19,7 @@ import {
 export type SidebarView = 'agent' | 'scm'
 
 /** Which details occupant the frame renders while the panel is open. */
-export type DetailsView = 'conversation' | 'scm'
+export type DetailsView = 'home' | 'changes' | 'conversation' | 'scm'
 
 /** SCM file the details column should show; viewing state, not a session event. */
 export interface ScmSelection {
@@ -59,6 +59,8 @@ type LayoutActions = {
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openDetails: (draft: LayoutState) => void
   closeDetails: (draft: LayoutState) => void
+  openWorkspaceHome: (draft: LayoutState) => void
+  openChanges: (draft: LayoutState) => void
   setSidebarView: (draft: LayoutState, view: SidebarView) => void
   openScmDetails: (draft: LayoutState, selection: ScmSelection) => void
 }
@@ -77,11 +79,11 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
   const handle = defineStore({
     init: (): LayoutState => ({
       sidebar: SIDEBAR_DEFAULT,
-      details: 0,
+      details: DETAILS_DEFAULT,
       narrow: false,
       narrowExpanded: false,
       sidebarView: 'agent',
-      detailsView: 'conversation',
+      detailsView: 'home',
       scmSelection: null,
     }),
     actions: {
@@ -105,6 +107,14 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
       closeDetails: (d) => { d.details = 0 },
+      openWorkspaceHome: (d) => {
+        d.detailsView = 'home'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openChanges: (d) => {
+        d.detailsView = 'changes'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
       setSidebarView: (d, view: SidebarView) => { d.sidebarView = view },
       openScmDetails: (d, selection: ScmSelection) => {
         d.scmSelection = selection

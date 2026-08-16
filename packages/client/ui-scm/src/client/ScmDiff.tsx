@@ -7,10 +7,16 @@ import { gitFailureCopy } from './git-error.ts'
 import { NS } from './locales.ts'
 import css from './ScmDiff.module.css'
 
-/** Injected git.diff for the SCM details occupant. */
+/** Injected git.diff and layout write for the SCM details occupant. */
 export interface ScmDiffInjected {
   /** Privileged git.diff. */
   diff: IApiClient['git']['diff']
+  /** Return the right column to the Changes list. */
+  showChanges: () => void
+  /** Return the right column to the workspace home. */
+  showHome: () => void
+  /** Close the details column. */
+  closeDetails: () => void
 }
 
 /** Full props for the SCM details diff. */
@@ -22,7 +28,7 @@ export type ScmDiffProps =
  * @param props - session hooks, owner selection, locale, and git.diff inject.
  * @returns the details body.
  */
-export function ScmDiff({ sessionId, selection, useSessions, diff, t }: ScmDiffProps) {
+export function ScmDiff({ sessionId, selection, useSessions, diff, showChanges, showHome, closeDetails, t }: ScmDiffProps) {
   const cwd = useSessions(list => list.byId[sessionId]?.cwd)
   const [file, setFile] = useState<GitFileDiff | undefined>(undefined)
   const [failure, setFailure] = useState<string | undefined>(undefined)
@@ -61,17 +67,34 @@ export function ScmDiff({ sessionId, selection, useSessions, diff, t }: ScmDiffP
     return () => { controller.abort() }
   }, [cwd, diff, selection, t])
 
+  const back = (
+    <div className={css.chrome}>
+      <button type="button" className={css.back} onClick={showHome}>{t('action.back')}</button>
+      <button type="button" className={css.back} onClick={showChanges}>{t('action.backToChanges')}</button>
+      <button
+        type="button"
+        className={css.iconButton}
+        aria-label={t('action.close')}
+        onClick={closeDetails}
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
+    </div>
+  )
   if (selection === null) {
-    return <div className={css.root} data-testid="scm-diff"><p className={css.empty}>{t('diff.empty')}</p></div>
+    return <div className={css.root} data-testid="scm-diff">{back}<p className={css.empty}>{t('diff.empty')}</p></div>
   }
   if (failure !== undefined) {
-    return <div className={css.root} data-testid="scm-diff"><p className={css.error}>{failure}</p></div>
+    return <div className={css.root} data-testid="scm-diff">{back}<p className={css.error}>{failure}</p></div>
   }
   if (loading || file === undefined) {
-    return <div className={css.root} data-testid="scm-diff"><p className={css.loading}>{t('diff.loading')}</p></div>
+    return <div className={css.root} data-testid="scm-diff">{back}<p className={css.loading}>{t('diff.loading')}</p></div>
   }
   return (
     <div className={css.root} data-testid="scm-diff">
+      {back}
       <DiffBlock diffs={[{ path: file.path, oldText: file.oldText, newText: file.newText }]} />
     </div>
   )

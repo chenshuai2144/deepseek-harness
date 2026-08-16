@@ -717,6 +717,8 @@ export type ChatViewSlotProps =
  * the shared chat store, but its close button is a layout orchestration call.
  */
 export interface DetailsInjected {
+  /** Return the right column to the workspace home. */
+  openWorkspaceHome: () => void
   /** Close the details panel (layout geometry stays with ctx.layout). */
   closeDetails: () => void
 }

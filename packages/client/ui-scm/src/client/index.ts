@@ -1,6 +1,7 @@
 /**
- * Workbench SCM plugin, browser half: occupies `sidebar.scm` and `details.scm`
- * and drives privileged git.* RPC against the current session workspace.
+ * Workbench SCM plugin, browser half: occupies `details.changes` and
+ * `details.scm` and drives privileged git.* RPC against the current session
+ * workspace.
  */
 import z from '@deepseek-ai/schemastery'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
@@ -8,18 +9,16 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { ScmDiff } from './ScmDiff.tsx'
-import { ScmEntry } from './ScmEntry.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
 import { en, NS, zh, type ScmKey } from './locales.ts'
 
 export type { ScmDiffInjected, ScmDiffProps } from './ScmDiff.tsx'
-export type { ScmEntryInjected, ScmEntryProps } from './ScmEntry.tsx'
 export type { ScmPanelInjected, ScmPanelProps } from './ScmPanel.tsx'
 export type { ScmKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** SCM sidebar and details copy. */
+    /** SCM changes list and details copy. */
     scm: ScmKey
   }
 }
@@ -54,19 +53,20 @@ export function apply(ctx: ClientContext, config: Config): void {
     openScmDetails: (selection: Parameters<typeof ctx.layout.openScmDetails>[0]) => {
       ctx.layout.openScmDetails(selection)
     },
-    showAgentView: () => { ctx.layout.setSidebarView('agent') },
+    showHome: () => { ctx.layout.openWorkspaceHome() },
+    closeDetails: () => { ctx.layout.closeDetails() },
     refreshIntervalMs: config.refreshIntervalMs,
-  })
-  const entryInject = () => ({
-    showScmView: () => { ctx.layout.setSidebarView('scm') },
   })
   const diffInject = () => ({
     diff: connection.api.git.diff.bind(connection.api.git),
+    showChanges: () => { ctx.layout.openChanges() },
+    showHome: () => { ctx.layout.openWorkspaceHome() },
+    closeDetails: () => { ctx.layout.closeDetails() },
   })
   ctx.slots.inject(
-    'sidebar.scm',
+    'details.changes',
     () => ctx.slots.register({
-      name: 'sidebar.scm',
+      name: 'details.changes',
       locale: NS,
       inject: panelInject,
     }, ScmPanel),
@@ -78,14 +78,5 @@ export function apply(ctx: ClientContext, config: Config): void {
       locale: NS,
       inject: diffInject,
     }, ScmDiff),
-  )
-  ctx.slots.inject(
-    'sidebar.footer.action',
-    () => ctx.slots.register({
-      name: 'sidebar.footer.action',
-      id: 'scm-open',
-      locale: NS,
-      inject: entryInject,
-    }, ScmEntry),
   )
 }

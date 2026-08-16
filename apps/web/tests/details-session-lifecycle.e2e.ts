@@ -1,6 +1,6 @@
 // Keyless browser regression for the details column's default visibility and Session ownership.
-// The shipped composition starts closed after selection and reload, retains an explicitly opened width through
-// unselected states, and closes it only when a different Session takes ownership.
+// A connected Session opens the workspace home at the contract default width. A blank Session
+// renders the column at zero. Switching Session ids returns the occupant to home.
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -88,7 +88,7 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await scaffold?.close()
   })
 
-  it('starts and reloads closed, then stays closed across Session ownership changes', async () => {
+  it('opens the workspace home on a connected Session and closes it on a blank Session', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-details-session-lifecycle'))
     const settled = scaffold.whenTurnSettled()
     const input = page.locator('textarea').first()
@@ -97,7 +97,8 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     await settled
     await page.getByText('LIGHTHOUSE', { exact: true }).waitFor({ timeout: 15_000 })
 
-    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
+    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(360)
+    expect(await page.getByText('Workspace', { exact: true }).isVisible()).toBe(true)
     expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
     await compareOrRefreshGolden(HANDLES_EXPECTED, await handleSnapshot(page), MODE)
 
@@ -117,19 +118,19 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     acknowledgeReloadConnectionLoss(tripwire, warningStart)
     await appFrame(page).waitFor({ timeout: 30_000 })
     await page.getByText('LIGHTHOUSE', { exact: true }).waitFor({ timeout: 15_000 })
-    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
+    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(360)
+    expect(await page.getByText('Workspace', { exact: true }).isVisible()).toBe(true)
     expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
 
     await page.getByRole('button', { name: /^(?:New session|新.*会话)$/ }).last().click()
     await page.getByText('Into the Unknown', { exact: false }).waitFor({ timeout: 15_000 })
     await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
-    expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
 
     const original = page.locator('[role=treeitem]').filter({ hasText: 'Reply with the single word' }).first()
     await original.click()
     await page.getByText('LIGHTHOUSE', { exact: true }).waitFor({ timeout: 15_000 })
-    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
-    expect(await page.getByText('Details', { exact: true }).isVisible()).toBe(false)
+    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(360)
+    expect(await page.getByText('Workspace', { exact: true }).isVisible()).toBe(true)
 
     const ungrouped = page.getByText('Ungrouped', { exact: true })
     const ungroupedRow = ungrouped.locator('..').locator('..')
@@ -144,7 +145,7 @@ describe.skipIf(MODE === 'record')('web e2e: details panel follows the current S
     const seeded = ungroupedSection.locator('[role="treeitem"]').nth(1)
     await seeded.click()
     await page.getByText('DONE', { exact: true }).waitFor({ timeout: 15_000 })
-    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(0)
+    await expect.poll(() => detailsTrack(page), { timeout: 5_000 }).toBe(360)
     expect(tripwire.pageErrors).toEqual([])
     expect(tripwire.warnings).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, ['handles.expected.md'])

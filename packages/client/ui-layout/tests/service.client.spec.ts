@@ -16,6 +16,8 @@ function fakePanels(): PanelActions {
     setNarrow: vi.fn(),
     openDetails: vi.fn(),
     closeDetails: vi.fn(),
+    openWorkspaceHome: vi.fn(),
+    openChanges: vi.fn(),
     setSidebarView: vi.fn(),
     openScmDetails: vi.fn(),
   }
@@ -30,12 +32,16 @@ describe('LayoutController', () => {
     service.toggleSidebar()
     service.openDetails()
     service.closeDetails()
+    service.openWorkspaceHome()
+    service.openChanges()
     service.setSidebarView('scm')
     service.openScmDetails({ path: 'a.ts', staged: true })
 
     expect(panels.toggleSidebar).toHaveBeenCalledTimes(1)
     expect(panels.openDetails).toHaveBeenCalledTimes(1)
     expect(panels.closeDetails).toHaveBeenCalledTimes(1)
+    expect(panels.openWorkspaceHome).toHaveBeenCalledTimes(1)
+    expect(panels.openChanges).toHaveBeenCalledTimes(1)
     expect(panels.setSidebarView).toHaveBeenCalledWith('scm')
     expect(panels.openScmDetails).toHaveBeenCalledWith({ path: 'a.ts', staged: true })
     expect(panels.setSidebar).not.toHaveBeenCalled()

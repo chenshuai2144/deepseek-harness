@@ -37,7 +37,7 @@ async function bench() {
 
 describe('ui-layout client apply', () => {
   it('declares its service dependencies', () => {
-    expect(inject).toEqual(['slots', 'theme'])
+    expect(inject).toEqual(['slots', 'theme', 'locale'])
   })
 
   it('provides ctx.layout and registers AppFrame into root with the three child declarations', async () => {
@@ -49,10 +49,12 @@ describe('ui-layout client apply', () => {
     expect(slots.entries('root')).toHaveLength(1)
     // …and declared the three children in the ledger.
     expect(slots.spec('sidebar.agent')).toEqual({ kind: 'single', scope: 'root' })
-    expect(slots.spec('sidebar.scm')).toEqual({ kind: 'single', scope: 'root' })
     expect(slots.spec('conversation')).toEqual({ kind: 'single', scope: 'session-maybe' })
     expect(slots.spec('details')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.spec('details.home')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.spec('details.changes')).toEqual({ kind: 'single', scope: 'session' })
     expect(slots.spec('details.scm')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.entries('details.home')).toHaveLength(1)
   })
 
   it('injects no business face and attaches the layout actions', async () => {
@@ -61,7 +63,8 @@ describe('ui-layout client apply', () => {
     await fiber.await()
     const actions = {
       setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), setNarrow: vi.fn(),
-      openDetails: vi.fn(), closeDetails: vi.fn(), setSidebarView: vi.fn(), openScmDetails: vi.fn(),
+      openDetails: vi.fn(), closeDetails: vi.fn(), openWorkspaceHome: vi.fn(), openChanges: vi.fn(),
+      setSidebarView: vi.fn(), openScmDetails: vi.fn(),
     }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
     expect(injected).toEqual({})

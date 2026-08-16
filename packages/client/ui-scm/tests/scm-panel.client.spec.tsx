@@ -59,8 +59,7 @@ function props(over: Partial<ScmPanelProps> & { sessions?: SessionListState } = 
     unstaged: [],
   }))
   return {
-    collapsed: false,
-    width: 280,
+    sessionId: SESSION,
     useSessions: <T,>(select: (snapshot: SessionListState) => T) => select(state),
     useWorkspaces: () => { throw new Error('unused') },
     status,
@@ -68,7 +67,8 @@ function props(over: Partial<ScmPanelProps> & { sessions?: SessionListState } = 
     unstage: over.unstage ?? vi.fn(() => ok({ ok: true as const })),
     commit: over.commit ?? vi.fn(() => ok({ commit: 'abc' })),
     openScmDetails: over.openScmDetails ?? vi.fn(),
-    showAgentView: over.showAgentView ?? vi.fn(),
+    showHome: over.showHome ?? vi.fn(),
+    closeDetails: over.closeDetails ?? vi.fn(),
     refreshIntervalMs: over.refreshIntervalMs ?? 60_000,
     t,
     ...over,
@@ -76,18 +76,15 @@ function props(over: Partial<ScmPanelProps> & { sessions?: SessionListState } = 
 }
 
 describe('ScmPanel', () => {
-  it('returns to the agent sidebar from the back control', async () => {
-    const showAgentView = vi.fn()
-    render(<ScmPanel {...props({ showAgentView })} />)
+  it('returns to the workspace home from the back control and closes from the header', async () => {
+    const showHome = vi.fn()
+    const closeDetails = vi.fn()
+    render(<ScmPanel {...props({ showHome, closeDetails })} />)
     await screen.findByText('main')
     fireEvent.click(screen.getByRole('button', { name: zh['action.back'] }))
-    expect(showAgentView).toHaveBeenCalledOnce()
-  })
-
-  it('shows a compact rail while the sidebar is collapsed', () => {
-    render(<ScmPanel {...props({ collapsed: true })} />)
-    expect(screen.getByTestId('scm-panel').className).toMatch(/collapsed/)
-    expect(screen.queryByText('main')).toBeNull()
+    expect(showHome).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: zh['action.close'] }))
+    expect(closeDetails).toHaveBeenCalledOnce()
   })
 
   it('shows empty copy without a session or workspace', () => {

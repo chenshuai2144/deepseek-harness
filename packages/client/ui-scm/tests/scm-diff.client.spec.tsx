@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { GitFileDiff, RpcResponse, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
@@ -48,6 +48,9 @@ function props(over: Partial<ScmDiffProps> = {}): ScmDiffProps {
     useSessions: <T,>(select: (snapshot: SessionListState) => T) => select(state),
     useWorkspaces: () => { throw new Error('unused') },
     diff: over.diff ?? vi.fn(() => ok<GitFileDiff>({ path: 'a.ts', oldText: 'old', newText: 'new' })),
+    showChanges: over.showChanges ?? vi.fn(),
+    showHome: over.showHome ?? vi.fn(),
+    closeDetails: over.closeDetails ?? vi.fn(),
     t,
     ...over,
   } as ScmDiffProps
@@ -57,6 +60,19 @@ describe('ScmDiff', () => {
   it('asks the user to pick a file when nothing is selected', () => {
     render(<ScmDiff {...props({ selection: null })} />)
     expect(screen.getByText(zh['diff.empty'])).toBeDefined()
+  })
+
+  it('returns to Changes or home and closes from the chrome', () => {
+    const showChanges = vi.fn()
+    const showHome = vi.fn()
+    const closeDetails = vi.fn()
+    render(<ScmDiff {...props({ selection: null, showChanges, showHome, closeDetails })} />)
+    fireEvent.click(screen.getByRole('button', { name: zh['action.backToChanges'] }))
+    expect(showChanges).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: zh['action.back'] }))
+    expect(showHome).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: zh['action.close'] }))
+    expect(closeDetails).toHaveBeenCalledOnce()
   })
 
   it('renders the file diff', async () => {

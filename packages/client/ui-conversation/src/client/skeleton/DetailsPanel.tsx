@@ -63,7 +63,9 @@ function rawResultText(block: ToolCallBlock): string {
   return parts.join('\n')
 }
 
-export function DetailsPanel({ useSession, useSessions, sessionId, useStore, renderSlot, closeDetails, t }: DetailsPanelProps) {
+export function DetailsPanel({
+  useSession, useSessions, sessionId, useStore, renderSlot, openWorkspaceHome, closeDetails, t,
+}: DetailsPanelProps) {
   const selection = useStore(s => s.selection)
   // Session workspace root: an omitted or relative terminal cwd resolves
   // against it, which the pure presenter cannot see.
@@ -78,6 +80,14 @@ export function DetailsPanel({ useSession, useSessions, sessionId, useStore, ren
   return (
     <div className={css.root}>
       <div className={css.header}>
+        <button
+          type="button" className={css.close} aria-label={t('details.home')}
+          onClick={() => { openWorkspaceHome() }}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
         <div className={css.title}>
           {selection === null ? t('details.title') : material?.name ?? selection.toolName ?? t('details.title')}
         </div>

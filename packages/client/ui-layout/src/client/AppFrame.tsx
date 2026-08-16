@@ -12,22 +12,24 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
-import type { createLayoutStore, SidebarView } from './stores.ts'
+import type { createLayoutStore, DetailsView } from './stores.ts'
 import css from './AppFrame.module.css'
 
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<
-    | 'sidebar.agent' | 'sidebar.scm'
-    | 'conversation' | 'details' | 'details.scm' | 'shell.overlay'
+    | 'sidebar.agent'
+    | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.scm' | 'shell.overlay'
   >
   & PropsStore<ReturnType<typeof createLayoutStore>>
 
-/** Sidebar slot name for one occupant. */
-const SIDEBAR_SLOT: Record<SidebarView, 'sidebar.agent' | 'sidebar.scm'> = {
-  agent: 'sidebar.agent',
-  scm: 'sidebar.scm',
+/** Details slot name for one occupant. */
+const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details' | 'details.scm'> = {
+  home: 'details.home',
+  changes: 'details.changes',
+  conversation: 'details',
+  scm: 'details.scm',
 }
 
 /** Center column grid item (session-body building block). */
@@ -109,7 +111,7 @@ export function AppFrame({
   useLayoutEffect(() => {
     if (detailsSession === undefined) return
     if (lastSession.current !== undefined && lastSession.current !== detailsSession) {
-      actions.closeDetails()
+      actions.openWorkspaceHome()
     }
     lastSession.current = detailsSession
   }, [actions, detailsSession])
@@ -168,7 +170,7 @@ export function AppFrame({
     actions.setDetails(detailsBase.current - dx)
   }, [actions])
 
-  const sidebarSlot = SIDEBAR_SLOT[panels.sidebarView]
+  const detailsSlot = DETAILS_SLOT[panels.detailsView]
   const sidebarOwner = { collapsed: sidebarCollapsed, width: cols.sidebar }
 
   return (
@@ -183,14 +185,14 @@ export function AppFrame({
       data-details-view={panels.detailsView}
     >
       <div className={css.sidebarCol}>
-        {renderSlot(sidebarSlot, sidebarOwner)}
+        {renderSlot('sidebar.agent', sidebarOwner)}
       </div>
       <>
         <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
         <DetailsColumn>
-          {panels.detailsView === 'scm'
+          {detailsSlot === 'details.scm'
             ? renderSlot('details.scm', { selection: panels.scmSelection })
-            : renderSlot('details', {})}
+            : renderSlot(detailsSlot, {})}
         </DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>

@@ -218,9 +218,9 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     expect((turnEnds[0] as SessionEvent & { data: { reason: { kind: string } } }).data.reason.kind).toBe('completed')
   }, 60_000)
 
-  it.skipIf(MODE === 'record')('opens the SCM sidebar from the sidebar foot', async () => {
+  it.skipIf(MODE === 'record')('opens Changes from the workspace home', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-scm'))
-    await page.getByRole('button', { name: 'Source Control' }).click()
+    await page.getByRole('button', { name: 'Changes' }).click()
     await expect.poll(() => page.getByTestId('scm-panel').count(), { timeout: 10_000 }).toBe(1)
     const snapshot = await captureStableAria(page, '[data-testid="scm-panel"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(SCM_EXPECTED, snapshot, MODE)

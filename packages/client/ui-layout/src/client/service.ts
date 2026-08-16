@@ -30,6 +30,10 @@ export interface ILayout {
   openDetails(): void
   /** Close the details panel. */
   closeDetails(): void
+  /** Open the right-column workspace home. */
+  openWorkspaceHome(): void
+  /** Open the right-column Changes (SCM) list. */
+  openChanges(): void
   /** Switch the sidebar occupant (`agent` sessions or `scm`). Viewing state. */
   setSidebarView(view: SidebarView): void
   /**
@@ -67,6 +71,16 @@ export class LayoutController implements ILayout {
   /** Close the details panel. */
   closeDetails(): void {
     this.#require().closeDetails()
+  }
+
+  /** Open the right-column workspace home. */
+  openWorkspaceHome(): void {
+    this.#require().openWorkspaceHome()
+  }
+
+  /** Open the right-column Changes (SCM) list. */
+  openChanges(): void {
+    this.#require().openChanges()
   }
 
   /**

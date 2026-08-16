@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import clsx from 'clsx'
 import type { GitChange, GitStatus, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ScmSelection } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -8,7 +7,7 @@ import { gitFailureCopy } from './git-error.ts'
 import { NS } from './locales.ts'
 import css from './ScmPanel.module.css'
 
-/** Injected git RPC methods and layout write for the SCM sidebar. */
+/** Injected git RPC methods and layout write for the SCM list. */
 export interface ScmPanelInjected {
   /** Privileged git.status. */
   status: IApiClient['git']['status']
@@ -22,21 +21,23 @@ export interface ScmPanelInjected {
   openScmDetails: (selection: ScmSelection) => void
   /** Status poll period while this view is mounted. */
   refreshIntervalMs: number
-  /** Return the left column to the agent session list. */
-  showAgentView: () => void
+  /** Return the right column to the workspace home. */
+  showHome: () => void
+  /** Close the details column. */
+  closeDetails: () => void
 }
 
-/** Full props for the SCM sidebar panel. */
+/** Full props for the SCM changes list. */
 export type ScmPanelProps =
-  PropsRuntime<'sidebar.scm'> & PropsLocale<typeof NS> & ScmPanelInjected
+  PropsRuntime<'details.changes'> & PropsLocale<typeof NS> & ScmPanelInjected
 
 /**
- * Sidebar SCM panel: branch name, staged/unstaged lists, stage actions, and commit.
- * @param props - layout owner share, session hooks, locale, and git RPC inject.
- * @returns the SCM sidebar tree.
+ * Right-column SCM list: branch name, staged/unstaged paths, stage actions, and commit.
+ * @param props - session share, locale, and git RPC inject.
+ * @returns the Changes list.
  */
 export function ScmPanel({
-  collapsed,
+  sessionId,
   useSessions,
   status,
   stage,
@@ -44,11 +45,12 @@ export function ScmPanel({
   commit,
   openScmDetails,
   refreshIntervalMs,
-  showAgentView,
+  showHome,
+  closeDetails,
   t,
 }: ScmPanelProps) {
-  const cwd = useSessions(list => list.current === undefined ? undefined : list.byId[list.current]?.cwd)
-  const hasSession = useSessions(list => list.current !== undefined)
+  const cwd = useSessions(list => list.byId[sessionId]?.cwd)
+  const hasSession = useSessions(list => list.byId[sessionId] !== undefined)
   const [snapshot, setSnapshot] = useState<GitStatus | undefined>(undefined)
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [message, setMessage] = useState('')
@@ -104,18 +106,23 @@ export function ScmPanel({
     }
   }, [refresh, t])
 
-  if (collapsed) {
-    return (
-      <div className={clsx(css.root, css.collapsed)} data-testid="scm-panel">
-        <IconBranchOutline16 />
-      </div>
-    )
-  }
+  const chrome = (
+    <ScmChrome showHome={showHome} closeDetails={closeDetails} t={t}>
+      {snapshot === undefined
+        ? null
+        : (
+          <>
+            <IconBranchOutline16 />
+            <span className={css.branch} aria-label={t('branch.aria')}>{snapshot.branch}</span>
+          </>
+        )}
+    </ScmChrome>
+  )
 
   if (!hasSession) {
     return (
       <div className={css.root} data-testid="scm-panel">
-        <button type="button" className={css.back} onClick={showAgentView}>{t('action.back')}</button>
+        {chrome}
         <p className={css.empty}>{t('empty.noSession')}</p>
       </div>
     )
@@ -123,7 +130,7 @@ export function ScmPanel({
   if (cwd === undefined) {
     return (
       <div className={css.root} data-testid="scm-panel">
-        <button type="button" className={css.back} onClick={showAgentView}>{t('action.back')}</button>
+        {chrome}
         <p className={css.empty}>{t('empty.noWorkspace')}</p>
       </div>
     )
@@ -131,7 +138,7 @@ export function ScmPanel({
   if (failure !== undefined) {
     return (
       <div className={css.root} data-testid="scm-panel">
-        <button type="button" className={css.back} onClick={showAgentView}>{t('action.back')}</button>
+        {chrome}
         <p className={css.empty}>{failure}</p>
       </div>
     )
@@ -139,7 +146,7 @@ export function ScmPanel({
   if (snapshot === undefined) {
     return (
       <div className={css.root} data-testid="scm-panel">
-        <button type="button" className={css.back} onClick={showAgentView}>{t('action.back')}</button>
+        {chrome}
         <p className={css.empty}>{t('diff.loading')}</p>
       </div>
     )
@@ -149,11 +156,7 @@ export function ScmPanel({
 
   return (
     <div className={css.root} data-testid="scm-panel">
-      <div className={css.header}>
-        <button type="button" className={css.back} onClick={showAgentView}>{t('action.back')}</button>
-        <IconBranchOutline16 />
-        <span className={css.branch} aria-label={t('branch.aria')}>{snapshot.branch}</span>
-      </div>
+      {chrome}
       {snapshot.unstaged.length === 0 && snapshot.staged.length === 0
         ? <p className={css.empty}>{t('empty.clean')}</p>
         : (
@@ -234,6 +237,36 @@ export function ScmPanel({
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Header chrome: back to home, optional branch, and close. */
+function ScmChrome({
+  showHome,
+  closeDetails,
+  t,
+  children,
+}: {
+  showHome: () => void
+  closeDetails: () => void
+  t: ScmPanelProps['t']
+  children?: ReactNode
+}): ReactNode {
+  return (
+    <div className={css.header}>
+      <button type="button" className={css.back} onClick={showHome}>{t('action.back')}</button>
+      {children}
+      <button
+        type="button"
+        className={css.iconButton}
+        aria-label={t('action.close')}
+        onClick={closeDetails}
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      </button>
     </div>
   )
 }

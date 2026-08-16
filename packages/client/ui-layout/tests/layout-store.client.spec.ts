@@ -17,11 +17,11 @@ const PERSIST_KEY = 'dsh.layout.panels'
 beforeEach(() => { localStorage.clear() })
 
 describe('createLayoutStore', () => {
-  it('initializes the sidebar at its default width, details closed, wide viewport assumed', () => {
+  it('initializes the sidebar and workspace home at their default widths', () => {
     const { store } = createLayoutStore().create()
     expect(store.getSnapshot()).toEqual({
-      sidebar: SIDEBAR_DEFAULT, details: 0, narrow: false, narrowExpanded: false,
-      sidebarView: 'agent', detailsView: 'conversation', scmSelection: null,
+      sidebar: SIDEBAR_DEFAULT, details: DETAILS_DEFAULT, narrow: false, narrowExpanded: false,
+      sidebarView: 'agent', detailsView: 'home', scmSelection: null,
     })
   })
 
@@ -58,7 +58,7 @@ describe('createLayoutStore', () => {
     actions.setSidebar(400)
     actions.setNarrow(true)
     actions.toggleSidebar()
-    expect(store.getSnapshot()).toMatchObject({ sidebar: 400, details: 0, narrow: true, narrowExpanded: true })
+    expect(store.getSnapshot()).toMatchObject({ sidebar: 400, details: DETAILS_DEFAULT, narrow: true, narrowExpanded: true })
     actions.toggleSidebar()
     expect(store.getSnapshot().narrowExpanded).toBe(false)
     expect(store.getSnapshot().sidebar).toBe(400)
@@ -91,7 +91,18 @@ describe('createLayoutStore', () => {
   it('setSidebarView writes the sidebar occupant without touching geometry', () => {
     const { store, actions } = createLayoutStore().create()
     actions.setSidebarView('scm')
-    expect(store.getSnapshot()).toMatchObject({ sidebarView: 'scm', sidebar: SIDEBAR_DEFAULT, details: 0 })
+    expect(store.getSnapshot()).toMatchObject({
+      sidebarView: 'scm', sidebar: SIDEBAR_DEFAULT, details: DETAILS_DEFAULT,
+    })
+  })
+
+  it('openWorkspaceHome and openChanges switch the details occupant and reopen a closed panel', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.closeDetails()
+    actions.openChanges()
+    expect(store.getSnapshot()).toMatchObject({ detailsView: 'changes', details: DETAILS_DEFAULT })
+    actions.openWorkspaceHome()
+    expect(store.getSnapshot()).toMatchObject({ detailsView: 'home', details: DETAILS_DEFAULT })
   })
 
   it('openScmDetails records the file, switches the details occupant, and opens the panel', () => {
@@ -117,11 +128,11 @@ describe('createLayoutStore', () => {
     const second = createLayoutStore().create()
     expect(second.store.getSnapshot()).toEqual({
       sidebar: SIDEBAR_DEFAULT,
-      details: 0,
+      details: DETAILS_DEFAULT,
       narrow: false,
       narrowExpanded: false,
       sidebarView: 'agent',
-      detailsView: 'conversation',
+      detailsView: 'home',
       scmSelection: null,
     })
   })

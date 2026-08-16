@@ -35,6 +35,7 @@ import { queueDockEntry } from './queue/QueueDock.tsx'
 import { ConversationRoot } from './skeleton/ConversationRoot.tsx'
 import { ConversationSession, ConversationSessionHeader } from './skeleton/ConversationSession.tsx'
 import { DetailsPanel } from './skeleton/DetailsPanel.tsx'
+import { WorkspaceHomeAction } from './skeleton/WorkspaceHomeAction.tsx'
 import { en, NS, zh, type ConversationKey } from './locales.ts'
 import { registerConversationNodes } from './conversation-nodes/register.ts'
 import { registerChatNodeRenderers } from './chat/register-node-renderers.ts'
@@ -449,8 +450,18 @@ export function apply(ctx: Context): void {
     },
     store: chatStore,
     inject: (): DetailsInjected => ({
+      openWorkspaceHome: () => { layout.openWorkspaceHome() },
       closeDetails: () => { layout.closeDetails() },
     }),
   }, DetailsPanel)
+
+  slots.register({
+    name: 'conversation.session.header.utilities',
+    id: 'workspace',
+    locale: NS,
+    inject: () => ({
+      openWorkspaceHome: () => { layout.openWorkspaceHome() },
+    }),
+  }, WorkspaceHomeAction)
 
 }

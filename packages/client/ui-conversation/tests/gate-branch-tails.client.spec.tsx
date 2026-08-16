@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS,
@@ -116,6 +116,7 @@ describe('render branch tails', () => {
       items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
       baselinesReady: true, recentWorkspaceId: undefined,
     })
+    const openWorkspaceHome = vi.fn()
     const view = render(
       <DetailsPanel
         SessionProvider={SessionProviderStub}
@@ -135,12 +136,15 @@ describe('render branch tails', () => {
         }}
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
+        openWorkspaceHome={openWorkspaceHome}
         closeDetails={vi.fn()}
         t={t}
       />,
     )
     expect(view.getByText('详情')).toBeTruthy()
     expect(view.getByText('该调用不在当前窗口内')).toBeTruthy()
+    fireEvent.click(view.getByRole('button', { name: zh['details.home'] }))
+    expect(openWorkspaceHome).toHaveBeenCalledOnce()
   })
 
   it('DetailsPanel resolves a nested run_code leaf to its full logged args and output', () => {
@@ -192,6 +196,7 @@ describe('render branch tails', () => {
         }}
         useStore={bindSnapshotSelector(chat)}
         actions={chat.actions}
+        openWorkspaceHome={vi.fn()}
         closeDetails={vi.fn()}
         t={t}
       />,

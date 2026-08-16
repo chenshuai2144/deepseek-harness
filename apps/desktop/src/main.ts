@@ -10,7 +10,13 @@ import { fork, type ChildProcess } from 'node:child_process'
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import { injectBootManifest, type WebBootGraph } from '@deepseek-ai/dsh-client-modules'
 import type { IpcFetchHead, IpcFetchPull, IpcFetchRequest } from '@deepseek-ai/dsh-client-connection'
+import { APP_USER_MODEL_ID, PRODUCT_NAME, resolveDesktopIcon, resolveDesktopRoot } from './brand.ts'
 import type { HostToMain, MainToHost } from './protocol.ts'
+
+app.setName(PRODUCT_NAME)
+if (process.platform === 'win32') {
+  app.setAppUserModelId(APP_USER_MODEL_ID)
+}
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
@@ -183,9 +189,16 @@ async function startDesktop(): Promise<void> {
     return net.fetch(pathToFileURL(target).href)
   })
 
+  const icon = resolveDesktopIcon(resolveDesktopRoot(import.meta.url))
+  if (process.platform === 'darwin' && icon !== undefined) {
+    app.dock?.setIcon(icon)
+  }
   const window = new BrowserWindow({
     width: 1280,
     height: 800,
+    title: PRODUCT_NAME,
+    ...icon === undefined ? {} : { icon },
+    autoHideMenuBar: true,
     webPreferences: {
       preload: fileURLToPath(new URL('../preload.cjs', import.meta.url)),
       sandbox: true,

@@ -741,6 +741,7 @@
     "apps/desktop": {
       "entry": [
         "electron-main.mjs",
+        "render-icon.mjs",
         "src/main.ts",
         "src/host.ts"
       ],

@@ -38,6 +38,7 @@ import {
   gitBranchRequestSchema, gitCommitRequestSchema, gitDiffRequestSchema,
   gitStageRequestSchema, gitStatusRequestSchema, gitUnstageRequestSchema,
 } from '../api/git.schema.ts'
+import { fsListDirRequestSchema, fsReadTextRequestSchema } from '../api/fs.schema.ts'
 import {
   workspaceArchiveSessionRequestSchema,
   workspaceCreateRequestSchema,
@@ -119,6 +120,8 @@ const UNARY_ROUTES: UnaryRoutes = {
   'git.unstage': { schema: gitUnstageRequestSchema, invoke: (api, r) => api.git.unstage(r) },
   'git.commit': { schema: gitCommitRequestSchema, invoke: (api, r) => api.git.commit(r) },
   'git.branch': { schema: gitBranchRequestSchema, invoke: (api, r) => api.git.branch(r) },
+  'fs.listDir': { schema: fsListDirRequestSchema, invoke: (api, r, signal) => api.fs.listDir(r, signal) },
+  'fs.readText': { schema: fsReadTextRequestSchema, invoke: (api, r, signal) => api.fs.readText(r, signal) },
   'workspace.list': { schema: workspaceListRequestSchema, invoke: (api, r) => api.workspace.list(r) },
   'workspace.create': { schema: workspaceCreateRequestSchema, invoke: (api, r) => api.workspace.create(r) },
   'workspace.rename': { schema: workspaceRenameRequestSchema, invoke: (api, r) => api.workspace.rename(r) },

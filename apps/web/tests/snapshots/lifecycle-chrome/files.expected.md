@@ -1,0 +1,6 @@
+- button "Back to workspace"
+- text: File
+- button "Close workspace"
+- tree "File":
+  - treeitem:
+    - button "README.md"

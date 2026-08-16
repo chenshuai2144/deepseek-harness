@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-工作台是现有 web 客户端上的 layout 贡献，不是新的 Electron 包族。[`ui-layout`](../../../../packages/client/ui-layout/README.md) 拥有三栏 Agent 架子（`sidebar` | `conversation` | `details`）。左栏是 Agent 会话列表（`sidebar.agent`）。没有活动栏，也没有空的 IDE 座位。SCM 占用右侧工作区的 Changes 视图（[工作区栏](2026-08-16-right-column-workspace-pane.md)）。SCM 文件 diff 占用 `details.scm`，并复用 [`DiffBlock`](../../../../packages/client/ui-primitives/README.md)。`sidebarView`、`detailsView` 和 `scmSelection` 存在 layout store 中。
+工作台是现有 web 客户端上的 layout 贡献，不是新的 Electron 包族。[`ui-layout`](../../../../packages/client/ui-layout/README.md) 拥有三栏 Agent 架子（`sidebar` | `conversation` | `details`）。左栏是 Agent 会话列表（`sidebar.agent`）。没有活动栏，也没有空的 IDE 座位。SCM 占用右侧工作区的 Changes 视图（[工作区栏](2026-08-16-right-column-workspace-pane.md)）。SCM 文件 diff 占用 `details.scm`，并复用 [`DiffBlock`](../../../../packages/client/ui-primitives/README.md)。`sidebarView`、`detailsView`、`scmSelection` 和 `fileSelection` 存在 layout store 中。
 
 Git 是完整的能力 seam。[`dsh-git`](../../../../packages/git/git/README.md) 是 Service Definition（`status`／`diff`／`stage`／`unstage`／`commit`／`branch`）。[`dsh-git-local`](../../../../packages/git/git-local/README.md) 是经 `simple-git` 的本地提供方。[`dsh-client-ui-scm`](../../../../packages/client/ui-scm/README.md) 是面向人的 Consumer，走特权 `git.*` RPC，与 `host.pickDirectory` 一样钉在回环。模型继续使用 `bash`。web-app 花名册只挂一次 `git-local` 和 `ui-scm`；desktop 叠在那份花名册上。
 

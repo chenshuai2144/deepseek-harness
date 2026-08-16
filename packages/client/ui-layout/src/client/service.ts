@@ -5,14 +5,14 @@
  * the per-session active view dissolved into ui-conversation's session store
  * (its only consumer). What remains here is the contract other plugins'
  * apply worlds reach for panel transitions (sidebar toggle from ui-sidebar,
- * details open/close from ui-conversation, SCM details from ui-scm) — writes
+ * details open/close from ui-conversation, File from ui-file, SCM details from ui-scm) — writes
  * stay inside the store's declared action set, delivered as the registration's
  * bound actions.
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { createLayoutStore, ScmSelection, SidebarView } from './stores.ts'
+import type { createLayoutStore, FileSelection, ScmSelection, SidebarView } from './stores.ts'
 
-export type { DetailsView, ScmSelection, SidebarView } from './stores.ts'
+export type { DetailsView, FileSelection, ScmSelection, SidebarView } from './stores.ts'
 
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
@@ -34,6 +34,13 @@ export interface ILayout {
   openWorkspaceHome(): void
   /** Open the right-column Changes (SCM) list. */
   openChanges(): void
+  /** Open the right-column File tree. */
+  openFiles(): void
+  /**
+   * Open the details panel on a workspace file preview.
+   * @param selection - workspace-relative path.
+   */
+  openFileDetails(selection: FileSelection): void
   /** Switch the sidebar occupant (`agent` sessions or `scm`). Viewing state. */
   setSidebarView(view: SidebarView): void
   /**
@@ -81,6 +88,19 @@ export class LayoutController implements ILayout {
   /** Open the right-column Changes (SCM) list. */
   openChanges(): void {
     this.#require().openChanges()
+  }
+
+  /** Open the right-column File tree. */
+  openFiles(): void {
+    this.#require().openFiles()
+  }
+
+  /**
+   * Open the details panel on a workspace file preview.
+   * @param selection - workspace-relative path.
+   */
+  openFileDetails(selection: FileSelection): void {
+    this.#require().openFileDetails(selection)
   }
 
   /**

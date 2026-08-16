@@ -115,6 +115,8 @@ const PRIVILEGED_METHODS = new Set([
   'git.unstage',
   'git.commit',
   'git.branch',
+  'fs.listDir',
+  'fs.readText',
   'settings.describe',
   'settings.openDocument',
   'settings.update',

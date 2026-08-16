@@ -22,6 +22,7 @@ function scriptedApi(overrides: {
   subagents?: Partial<ApiProxy['subagents']>
   host?: Partial<ApiProxy['host']>
   git?: Partial<ApiProxy['git']>
+  fs?: Partial<ApiProxy['fs']>
   skills?: Partial<ApiProxy['skills']>
   agentPresets?: Partial<ApiProxy['agentPresets']>
   events?: Partial<ApiProxy['events']>
@@ -89,6 +90,11 @@ function scriptedApi(overrides: {
       commit: r => ok(r, { commit: 'test' }),
       branch: r => ok(r, { name: 'main' }),
       ...overrides.git,
+    },
+    fs: {
+      listDir: r => ok(r, { path: r.payload.path ?? '', entries: [] }),
+      readText: r => ok(r, { path: r.payload.path, text: '', truncated: false }),
+      ...overrides.fs,
     },
     workspace: {
       list: r => ok(r, { items: [], archivedSessionIds: [] }),

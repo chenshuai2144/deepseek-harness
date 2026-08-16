@@ -2595,6 +2595,10 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         details: { cwd: request.payload.cwd },
       }),
     },
+    fs: {
+      listDir: request => ok(request, { path: request.payload.path ?? '', entries: [] }),
+      readText: request => ok(request, { path: request.payload.path, text: '', truncated: false }),
+    },
     workspace: {
       list: request => ok(request, {
         items: workspaces.map(w => ({ ...w })),
@@ -3136,6 +3140,8 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'git.unstage': return this.api.git.unstage(request)
       case 'git.commit': return this.api.git.commit(request)
       case 'git.branch': return this.api.git.branch(request)
+      case 'fs.listDir': return this.api.fs.listDir(request, signal)
+      case 'fs.readText': return this.api.fs.readText(request, signal)
       case 'workspace.list': return this.api.workspace.list(request)
       case 'workspace.create': return this.api.workspace.create(request)
       case 'workspace.rename': return this.api.workspace.rename(request)

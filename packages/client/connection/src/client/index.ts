@@ -17,7 +17,9 @@ import type { ClientConnectionRpc } from '../rpc.ts'
 // ---- Contract re-exports (browser-safe apiproxy channels + core types) ----
 export type {
   ApiProxy, SessionsApi, SessionSearchItem, SessionSummary, PromptContentPart, HostApi,
-  GitApi, GitChange, GitFileDiff, GitStatus, EventsApi, MuxFrame, HostFrame,
+  GitApi, GitChange, GitFileDiff, GitStatus,
+  FsApi, FsDirEntryView, FsDirListing, FsFileText,
+  EventsApi, MuxFrame, HostFrame,
   ApprovalResponsePayload, QuestionResponsePayload, HistoryEntry, ToolEventView,
   DirectoryEntry, DirectoryListing,
   ToolCallView, ToolResultView, WorkspaceApi, WorkspaceId, WorkspaceView,

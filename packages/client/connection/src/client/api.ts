@@ -7,7 +7,9 @@
 
 export type {
   ApiProxy, SessionsApi, SessionSearchItem, SessionSummary, PromptContentPart, HostApi,
-  GitApi, GitChange, GitFileDiff, GitStatus, EventsApi, MuxFrame, HostFrame,
+  GitApi, GitChange, GitFileDiff, GitStatus,
+  FsApi, FsDirEntryView, FsDirListing, FsFileText,
+  EventsApi, MuxFrame, HostFrame,
   ApprovalResponsePayload, QuestionResponsePayload, HistoryEntry, ToolEventView,
   DirectoryEntry, DirectoryListing,
   ResponseValue, WorkspaceApi, WorkspaceId, WorkspaceView,

@@ -93,6 +93,9 @@
       "path": "../directory-picker"
     },
     {
+      "path": "../../fs/fs"
+    },
+    {
       "path": "../../git/git"
     },
     {

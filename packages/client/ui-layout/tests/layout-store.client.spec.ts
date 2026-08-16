@@ -21,7 +21,7 @@ describe('createLayoutStore', () => {
     const { store } = createLayoutStore().create()
     expect(store.getSnapshot()).toEqual({
       sidebar: SIDEBAR_DEFAULT, details: DETAILS_DEFAULT, narrow: false, narrowExpanded: false,
-      sidebarView: 'agent', detailsView: 'home', scmSelection: null,
+      sidebarView: 'agent', detailsView: 'home', scmSelection: null, fileSelection: null,
     })
   })
 
@@ -105,6 +105,19 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot()).toMatchObject({ detailsView: 'home', details: DETAILS_DEFAULT })
   })
 
+  it('openFiles and openFileDetails switch the details occupant and record the file', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.closeDetails()
+    actions.openFiles()
+    expect(store.getSnapshot()).toMatchObject({ detailsView: 'files', details: DETAILS_DEFAULT })
+    actions.openFileDetails({ path: 'src/a.ts' })
+    expect(store.getSnapshot()).toMatchObject({
+      detailsView: 'file',
+      fileSelection: { path: 'src/a.ts' },
+      details: DETAILS_DEFAULT,
+    })
+  })
+
   it('openScmDetails records the file, switches the details occupant, and opens the panel', () => {
     const { store, actions } = createLayoutStore().create()
     actions.openScmDetails({ path: 'src/a.ts', staged: false })
@@ -134,6 +147,7 @@ describe('createLayoutStore', () => {
       sidebarView: 'agent',
       detailsView: 'home',
       scmSelection: null,
+      fileSelection: null,
     })
   })
 })

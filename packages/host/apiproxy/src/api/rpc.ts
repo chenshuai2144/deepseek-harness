@@ -50,6 +50,14 @@ export interface RpcErrorDetailsMap {
   'git-not-found': { cwd: string }
   'git-empty-message': { cwd: string }
   'git-failed': { cwd: string }
+  'fs-unavailable': {}
+  'fs-failed': { cwd: string }
+  'fs-not-found': { path: string }
+  'fs-not-directory': { path: string }
+  'fs-not-text': { path: string }
+  'fs-not-regular-file': { path: string }
+  'fs-too-large': { path: string }
+  'fs-permission-denied': { path: string }
   'agent-preset-read-only': { agentPreset: string; reason: string }
   'agent-preset-locked': { sessionId: SessionId; agentPreset: string }
   'agent-preset-conflict': { sessionId: SessionId; requestedPreset: string; existingPreset?: string }

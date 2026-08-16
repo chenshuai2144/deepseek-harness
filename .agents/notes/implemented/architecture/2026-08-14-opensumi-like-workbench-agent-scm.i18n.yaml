@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-14-opensumi-like-workbench-agent-scm.md
-2026-08-14-opensumi-like-workbench-agent-scm.md: 171a66d65f169a22ed78d205292ce3223c6a855c
-2026-08-14-opensumi-like-workbench-agent-scm.zh.md: 629125951e05e43f132c60914c63a0b942bf5b24
+2026-08-14-opensumi-like-workbench-agent-scm.md: c6dd747696bda6eb184bb92b535093bbbe1a4135
+2026-08-14-opensumi-like-workbench-agent-scm.zh.md: cdee0021a9f125c19f5b89486b7a44bad45b3442

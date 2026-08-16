@@ -61,6 +61,8 @@ function mountFrame() {
     if (key === 'sidebar.agent') return <div data-testid="sidebar-content" />
     if (key === 'details.home') return <div data-testid="home-content" />
     if (key === 'details.changes') return <div data-testid="changes-content" />
+    if (key === 'details.files') return <div data-testid="files-content" />
+    if (key === 'details.file') return <div data-testid="file-details-content" />
     if (key === 'details.scm') return <div data-testid="scm-details-content" />
     if (key === 'conversation') return <div data-testid="center-content" />
     if (key === 'details') return <div data-testid="details-content" />
@@ -229,12 +231,18 @@ describe('AppFrame', () => {
     expect(tracks(frame)).toEqual([280, 360])
   })
 
-  it('renders Changes and tool-details occupants from detailsView', () => {
+  it('renders Changes, File, and tool-details occupants from detailsView', () => {
     const { instance, getByTestId, rerenderFrame } = mountFrame()
     expect(getByTestId('home-content')).toBeTruthy()
     act(() => { instance.actions.openChanges() })
     rerenderFrame()
     expect(getByTestId('changes-content')).toBeTruthy()
+    act(() => { instance.actions.openFiles() })
+    rerenderFrame()
+    expect(getByTestId('files-content')).toBeTruthy()
+    act(() => { instance.actions.openFileDetails({ path: 'a.ts' }) })
+    rerenderFrame()
+    expect(getByTestId('file-details-content')).toBeTruthy()
     act(() => { instance.actions.openDetails() })
     rerenderFrame()
     expect(getByTestId('details-content')).toBeTruthy()

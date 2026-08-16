@@ -10,7 +10,7 @@
 // theme/layout golden: aria snapshots are color-blind (lane scope: the
 // browser-e2e-lane Agent Note); the hero's waiting state gets the one golden
 // here.
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
@@ -33,6 +33,8 @@ const PLAN_ACTIVE_EXPECTED = join(SNAPSHOT_DIR, 'plan-active.expected.md')
 // persistence + history — byte-equal rendering is exactly the recovery claim.
 const RELOADED_EXPECTED = join(SNAPSHOT_DIR, 'reloaded.expected.md')
 const SCM_EXPECTED = join(SNAPSHOT_DIR, 'scm.expected.md')
+const FILES_EXPECTED = join(SNAPSHOT_DIR, 'files.expected.md')
+const FILE_PREVIEW_EXPECTED = join(SNAPSHOT_DIR, 'file-preview.expected.md')
 const MODE = webSnapshotMode()
 
 const PROMPT = 'Reply with the single word LIGHTHOUSE and stop.'
@@ -227,6 +229,28 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     expect(snapshot).toContain('Not a git repository')
   })
 
+  it.skipIf(MODE === 'record')('opens File from the workspace home and previews a text file', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-file'))
+    const cwd = scaffold.ctx.sessions.list()[0]?.header.cwd
+    expect(cwd).toBeDefined()
+    await writeFile(join(cwd!, 'README.md'), '# hello\n')
+    if (await page.getByTestId('workspace-home').count() === 0) {
+      await page.getByRole('button', { name: 'Back to workspace' }).click()
+      await page.getByTestId('workspace-home').waitFor({ timeout: 10_000 })
+    }
+    await page.getByRole('button', { name: 'File' }).click()
+    const panel = page.getByTestId('file-panel')
+    await expect.poll(() => panel.count(), { timeout: 10_000 }).toBe(1)
+    await expect.poll(async () => (await panel.innerText()).includes('README.md'), { timeout: 10_000 }).toBe(true)
+    const tree = await captureStableAria(page, '[data-testid="file-panel"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(FILES_EXPECTED, tree, MODE)
+    await page.getByRole('button', { name: 'README.md' }).click()
+    await expect.poll(() => page.getByTestId('file-preview').count(), { timeout: 10_000 }).toBe(1)
+    const preview = await captureStableAria(page, '[data-testid="file-preview"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(FILE_PREVIEW_EXPECTED, preview, MODE)
+    expect(preview).toContain('README.md')
+  })
+
   it.skipIf(MODE === 'record')('recovers the whole surface across a reload from the log alone', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-reload'))
     const warningStart = tripwire.warnings.length
@@ -281,7 +305,7 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
     expect(tripwire.warnings).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, [
-      'session.jsonl', 'command-menu.expected.md', 'command-menu-fuzzy.expected.md', 'hero.expected.md', 'plan-active.expected.md', 'reloaded.expected.md', 'scm.expected.md',
+      'session.jsonl', 'command-menu.expected.md', 'command-menu-fuzzy.expected.md', 'hero.expected.md', 'plan-active.expected.md', 'reloaded.expected.md', 'scm.expected.md', 'files.expected.md', 'file-preview.expected.md',
     ])
   })
 })

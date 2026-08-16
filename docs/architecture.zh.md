@@ -124,6 +124,7 @@ seam 正是替换一个提供方就能改变整个产品的原因。文件系统
 | 添加模型可见上下文 | 调用 `agent.inject()`；它会落到下一次获准的请求中 |
 | 添加 UI 或编辑器集成 | 驱动 `ctx.agents` 并从 `session/event` 渲染 |
 | 添加工作台 SCM 面板 | 注册 `ctx.git` 与 `ui-scm`；模型继续使用 `bash` |
+| 添加工作台 File 栏 | 注册 `ctx.fs` 与 `ui-file`；模型继续使用文件系统工具 |
 | 添加 Web Client Chat 节点 | 注册 `ConversationNodeDefinition` + keyed renderer |
 | 添加持久会话状态 | 扩展 `SessionEventMap`；从日志渲染和回放 |
 | 生成会话标题 | 注册唯一的 `ctx.sessionTitle` 提供方 |

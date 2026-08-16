@@ -20,14 +20,16 @@ export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<
     | 'sidebar.agent'
-    | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.scm' | 'shell.overlay'
+    | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.scm' | 'shell.overlay'
   >
   & PropsStore<ReturnType<typeof createLayoutStore>>
 
 /** Details slot name for one occupant. */
-const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details' | 'details.scm'> = {
+const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details' | 'details.scm'> = {
   home: 'details.home',
   changes: 'details.changes',
+  files: 'details.files',
+  file: 'details.file',
   conversation: 'details',
   scm: 'details.scm',
 }
@@ -192,7 +194,9 @@ export function AppFrame({
         <DetailsColumn>
           {detailsSlot === 'details.scm'
             ? renderSlot('details.scm', { selection: panels.scmSelection })
-            : renderSlot(detailsSlot, {})}
+            : detailsSlot === 'details.file'
+              ? renderSlot('details.file', { selection: panels.fileSelection })
+              : renderSlot(detailsSlot, {})}
         </DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>

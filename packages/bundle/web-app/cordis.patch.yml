@@ -150,9 +150,11 @@
     # Dual-face: the node half scans this tree, composes window.__DSH_BOOT__,
     # and serves /plugins/<id>/client.js; the browser half is the module table
     # the shell kernel constructs before cordis exists (adopted as a plugin
-    # entry by the kernel, never fetched).
+    # entry by the kernel, never fetched). The row waits on webServer so the
+    # index tap and /plugins route register after listen.
     - id: modules
       name: '@deepseek-ai/dsh-client-modules'
+      inject: [webServer]
 
     # Owns both ends of the web transport: node half binds the gateway to the
     # webserver under /api; browser half is the fetch/SSE client.
@@ -188,6 +190,9 @@
 
     - id: ui-scm
       name: '@deepseek-ai/dsh-client-ui-scm'
+
+    - id: ui-file
+      name: '@deepseek-ai/dsh-client-ui-file'
 
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'

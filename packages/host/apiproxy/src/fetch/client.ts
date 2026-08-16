@@ -21,6 +21,7 @@ import {
   gitBranchValueSchema, gitCommitValueSchema, gitDiffValueSchema,
   gitStageValueSchema, gitStatusValueSchema, gitUnstageValueSchema,
 } from '../api/git.schema.ts'
+import { fsListDirValueSchema, fsReadTextValueSchema } from '../api/fs.schema.ts'
 import {
   sessionCancelValueSchema,
   sessionAttachmentValueSchema,
@@ -124,6 +125,10 @@ export interface IApiClient {
     commit(payload: RequestPayload<'git.commit'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.commit'>>>
     branch(payload: RequestPayload<'git.branch'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'git.branch'>>>
   }
+  fs: {
+    listDir(payload: RequestPayload<'fs.listDir'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'fs.listDir'>>>
+    readText(payload: RequestPayload<'fs.readText'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'fs.readText'>>>
+  }
   workspace: {
     list(payload: RequestPayload<'workspace.list'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.list'>>>
     create(payload: RequestPayload<'workspace.create'>, signal?: AbortSignal): Promise<RpcResponse<ResponseValue<'workspace.create'>>>
@@ -209,6 +214,8 @@ const UNARY_VALUE_SCHEMAS: { [K in keyof RpcMethodMap]: z.ZodType<Wire<ResponseV
   'git.unstage': gitUnstageValueSchema,
   'git.commit': gitCommitValueSchema,
   'git.branch': gitBranchValueSchema,
+  'fs.listDir': fsListDirValueSchema,
+  'fs.readText': fsReadTextValueSchema,
   'workspace.list': workspaceListValueSchema,
   'workspace.create': workspaceCreateValueSchema,
   'workspace.rename': workspaceRenameValueSchema,
@@ -468,6 +475,11 @@ export abstract class AbstractApiClient implements IApiClient {
     unstage: (payload, signal) => this.callUnary('git.unstage', payload, signal),
     commit: (payload, signal) => this.callUnary('git.commit', payload, signal),
     branch: (payload, signal) => this.callUnary('git.branch', payload, signal),
+  }
+
+  readonly fs: IApiClient['fs'] = {
+    listDir: (payload, signal) => this.callUnary('fs.listDir', payload, signal),
+    readText: (payload, signal) => this.callUnary('fs.readText', payload, signal),
   }
 
   readonly workspace: IApiClient['workspace'] = {

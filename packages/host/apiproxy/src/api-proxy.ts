@@ -5,7 +5,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { mkdir, stat } from 'node:fs/promises'
-import { dirname, isAbsolute } from 'node:path'
+import { dirname, isAbsolute, relative } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
@@ -101,6 +101,9 @@ import { UserQuestionError } from '@deepseek-ai/dsh-user-questions'
 import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
 import { GitError } from '@deepseek-ai/dsh-git'
 import type {} from '@deepseek-ai/dsh-git'
+import { FsError } from '@deepseek-ai/dsh-fs'
+import type { FileSystem, FsTarget } from '@deepseek-ai/dsh-fs'
+import type {} from '@deepseek-ai/dsh-fs'
 import {
   ApiRemoteSessionNotFound as SessionNotFound,
   ApiRemoteSubagentSessionOwnership as SubagentSessionOwnership,
@@ -653,6 +656,122 @@ function gitCwdError(request: RpcRequest<{ cwd: string }>): RpcError | undefined
     message: `git cwd must be an absolute path: ${request.payload.cwd}`,
     details: { cwd: request.payload.cwd },
   }
+}
+
+/** Inclusive UTF-8 byte cap on one File-pane preview, wrappers included. */
+const FS_PREVIEW_MAX_BYTES = 1_048_576
+
+/** Refuse a relative workspace root at the fs wire boundary. */
+function fsCwdError(request: RpcRequest<{ cwd: string }>): RpcError | undefined {
+  if (isAbsolute(request.payload.cwd)) return undefined
+  return {
+    code: 'fs-failed',
+    message: `fs cwd must be an absolute path: ${request.payload.cwd}`,
+    details: { cwd: request.payload.cwd },
+  }
+}
+
+/** Map a filesystem seam failure onto the wire error vocabulary. */
+function fsError(error: unknown, path: string, cwd: string): RpcError {
+  if (error instanceof FsError) {
+    switch (error.code) {
+      case 'FS_NOT_FOUND':
+        return { code: 'fs-not-found', message: error.message, details: { path } }
+      case 'FS_NOT_DIRECTORY':
+        return { code: 'fs-not-directory', message: error.message, details: { path } }
+      case 'FS_NOT_TEXT':
+        return { code: 'fs-not-text', message: error.message, details: { path } }
+      case 'FS_NOT_REGULAR_FILE':
+        return { code: 'fs-not-regular-file', message: error.message, details: { path } }
+      case 'FS_TOO_LARGE':
+        return { code: 'fs-too-large', message: error.message, details: { path } }
+      case 'FS_PERMISSION_DENIED':
+      case 'FS_SANDBOX_DENIED':
+        return { code: 'fs-permission-denied', message: error.message, details: { path } }
+      default:
+        return { code: 'fs-failed', message: error.message, details: { cwd } }
+    }
+  }
+  return { code: 'internal', message: error instanceof Error ? error.message : String(error), details: {} }
+}
+
+/**
+ * Workspace-relative `/` path, or undefined when `absolute` is outside `cwd`.
+ * @param cwd - absolute workspace root.
+ * @param absolute - backend process path.
+ * @returns the relative path, or `''` for the root itself.
+ */
+function workspaceRelative(cwd: string, absolute: string): string | undefined {
+  const rel = relative(cwd, absolute)
+  if (rel.startsWith('..') || isAbsolute(rel)) return undefined
+  return rel.split('\\').join('/')
+}
+
+/**
+ * Resolve a workspace-relative path and refuse anything outside `cwd`.
+ * @param fs - composed filesystem seam.
+ * @param cwd - absolute workspace root.
+ * @param relPath - workspace-relative path, or empty for the root.
+ * @param signal - aborts resolve.
+ * @returns the contained target and its relative path, or a wire error.
+ */
+async function resolveInsideWorkspace(
+  fs: FileSystem,
+  cwd: string,
+  relPath: string,
+  signal: AbortSignal,
+): Promise<{ target: FsTarget; relative: string } | RpcError> {
+  const root = await fs.resolve(cwd, { signal })
+  const target = relPath === '' || relPath === '.'
+    ? root
+    : await fs.resolve(relPath, { cwd, signal })
+  if (!fs.contains(root, target)) {
+    return {
+      code: 'fs-failed',
+      message: `fs path is outside the workspace: ${relPath}`,
+      details: { cwd },
+    }
+  }
+  const mapped = workspaceRelative(cwd, fs.processPath(target))
+  if (mapped === undefined) {
+    return {
+      code: 'fs-failed',
+      message: `fs path is outside the workspace: ${relPath}`,
+      details: { cwd },
+    }
+  }
+  return { target, relative: mapped }
+}
+
+/**
+ * Read a preview that never exceeds {@link FS_PREVIEW_MAX_BYTES} UTF-8 bytes.
+ * @param fs - composed filesystem seam.
+ * @param target - contained regular file.
+ * @param signal - aborts the stream.
+ * @returns decoded text and whether the complete file was larger than the cap.
+ */
+async function readPreview(
+  fs: FileSystem,
+  target: FsTarget,
+  signal: AbortSignal,
+): Promise<{ text: string; truncated: boolean }> {
+  const encoder = new TextEncoder()
+  let text = ''
+  let bytes = 0
+  for await (const chunk of await fs.streamText(target, signal)) {
+    const chunkBytes = encoder.encode(chunk).byteLength
+    if (bytes + chunkBytes <= FS_PREVIEW_MAX_BYTES) {
+      text += chunk
+      bytes += chunkBytes
+      continue
+    }
+    let take = chunk
+    while (take.length > 0 && bytes + encoder.encode(take).byteLength > FS_PREVIEW_MAX_BYTES) {
+      take = take.slice(0, -1)
+    }
+    return { text: text + take, truncated: true }
+  }
+  return { text, truncated: false }
 }
 
 /** Resolved Agent model and project-directory defaults consumed by the API implementation. */
@@ -3123,6 +3242,87 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           return ok(request, await git.branch(request.payload.cwd))
         } catch (error: unknown) {
           return err(request, gitError(error))
+        }
+      },
+    },
+
+    fs: {
+      async listDir(request, signal) {
+        const invalid = fsCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const fs = ctx.get('fs')
+        if (fs === undefined) {
+          return err(request, { code: 'fs-unavailable', message: 'fs.listDir needs ctx.fs', details: {} })
+        }
+        const relPath = request.payload.path ?? ''
+        try {
+          const resolved = await resolveInsideWorkspace(fs, request.payload.cwd, relPath, signal)
+          if ('code' in resolved) return err(request, resolved)
+          const info = await fs.stat(resolved.target, signal)
+          if (info === undefined) {
+            return err(request, {
+              code: 'fs-not-found',
+              message: `fs path not found: ${resolved.relative}`,
+              details: { path: resolved.relative },
+            })
+          }
+          if (info.type !== 'directory') {
+            return err(request, {
+              code: 'fs-not-directory',
+              message: `fs path is not a directory: ${resolved.relative}`,
+              details: { path: resolved.relative },
+            })
+          }
+          const children = await fs.listDir(resolved.target, signal)
+          const entries = []
+          for (const child of children) {
+            const childPath = workspaceRelative(request.payload.cwd, fs.processPath(child.target))
+            if (childPath === undefined) continue
+            entries.push({ name: child.name, path: childPath, type: child.type })
+          }
+          return ok(request, { path: resolved.relative, entries })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'fs listDir was aborted', details: {} })
+          }
+          return err(request, fsError(error, relPath, request.payload.cwd))
+        }
+      },
+
+      async readText(request, signal) {
+        const invalid = fsCwdError(request)
+        if (invalid !== undefined) return err(request, invalid)
+        const fs = ctx.get('fs')
+        if (fs === undefined) {
+          return err(request, { code: 'fs-unavailable', message: 'fs.readText needs ctx.fs', details: {} })
+        }
+        try {
+          const resolved = await resolveInsideWorkspace(
+            fs, request.payload.cwd, request.payload.path, signal,
+          )
+          if ('code' in resolved) return err(request, resolved)
+          const info = await fs.stat(resolved.target, signal)
+          if (info === undefined) {
+            return err(request, {
+              code: 'fs-not-found',
+              message: `fs path not found: ${resolved.relative}`,
+              details: { path: resolved.relative },
+            })
+          }
+          if (info.type !== 'file') {
+            return err(request, {
+              code: 'fs-not-regular-file',
+              message: `fs path is not a regular file: ${resolved.relative}`,
+              details: { path: resolved.relative },
+            })
+          }
+          const preview = await readPreview(fs, resolved.target, signal)
+          return ok(request, { path: resolved.relative, ...preview })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'fs readText was aborted', details: {} })
+          }
+          return err(request, fsError(error, request.payload.path, request.payload.cwd))
         }
       },
     },

@@ -6,6 +6,7 @@
 
 import type { SessionsApi } from './sessions.ts'
 import type { GitApi } from './git.ts'
+import type { FsApi } from './fs.ts'
 import type { HostApi } from './host.ts'
 import type { WorkspaceApi } from './workspace.ts'
 import type { AgentPresetsApi } from './agent-presets.ts'
@@ -50,6 +51,8 @@ export interface RpcMethodMap {
   'git.unstage': GitApi['unstage']
   'git.commit': GitApi['commit']
   'git.branch': GitApi['branch']
+  'fs.listDir': FsApi['listDir']
+  'fs.readText': FsApi['readText']
   'workspace.list': WorkspaceApi['list']
   'workspace.create': WorkspaceApi['create']
   'workspace.rename': WorkspaceApi['rename']

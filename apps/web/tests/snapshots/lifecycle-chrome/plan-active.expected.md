@@ -41,4 +41,9 @@
 - button "Open workspace home"
 - text: Workspace
 - button "Close workspace"
-- button "Changes"
+- button "Changes":
+  - img
+  - text: Changes
+- button "File":
+  - img
+  - text: File

@@ -13,7 +13,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { PanelActions } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
-import { createLayoutStore, type ScmSelection } from './stores.ts'
+import { createLayoutStore, type FileSelection, type ScmSelection } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { WorkspaceHome } from './WorkspaceHome.tsx'
@@ -26,7 +26,7 @@ import { en, NS, zh, type LayoutKey } from './locales.ts'
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
 export type { ILayout } from './service.ts'
-export type { DetailsView, ScmSelection, SidebarView } from './stores.ts'
+export type { DetailsView, FileSelection, ScmSelection, SidebarView } from './stores.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -54,7 +54,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'sidebar.agent': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
      * Right-column workspace home. OCCUPIED by this package's WorkspaceHome.
-     * Live tiles open implemented occupants; File / Terminal / Browser stay
+     * Live tiles open implemented occupants; Terminal / Browser stay
      * off the home until they have a real view.
      */
     'details.home': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
@@ -63,6 +63,16 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * from the workspace home Changes tile, not an IDE activity bar.
      */
     'details.changes': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    /**
+     * Workspace file tree in the right column. OCCUPIED by ui-file. Opened
+     * from the workspace home File tile.
+     */
+    'details.files': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    /**
+     * Read-only workspace file preview. OCCUPIED by ui-file. The owner
+     * passes the current file selection (or null while none is chosen).
+     */
+    'details.file': { kind: 'single'; scope: 'session'; owner: FileDetailsOwnerProps }
     /**
      * The whole center column, across both the no-session hero and a live
      * conversation. OCCUPIED by ui-conversation's ConversationRoot, which
@@ -131,6 +141,12 @@ export interface ScmDetailsOwnerProps {
   selection: ScmSelection | null
 }
 
+/** File preview owner share: the workspace file the tree selected. */
+export interface FileDetailsOwnerProps {
+  /** Selected workspace-relative path, or null while none is chosen. */
+  selection: FileSelection | null
+}
+
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
 export const inject = ['slots', 'theme', 'locale']
 
@@ -154,6 +170,8 @@ export function apply(ctx: ClientContext): void {
         'details': { kind: 'single', scope: 'session' },
         'details.home': { kind: 'single', scope: 'session' },
         'details.changes': { kind: 'single', scope: 'session' },
+        'details.files': { kind: 'single', scope: 'session' },
+        'details.file': { kind: 'single', scope: 'session' },
         'details.scm': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
@@ -172,6 +190,7 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       inject: () => ({
         openChanges: () => { layout.openChanges() },
+        openFiles: () => { layout.openFiles() },
         openWorkspaceHome: () => { layout.openWorkspaceHome() },
         closeDetails: () => { layout.closeDetails() },
       }),

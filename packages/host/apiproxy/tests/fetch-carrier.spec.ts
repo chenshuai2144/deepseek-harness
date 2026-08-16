@@ -180,6 +180,14 @@ function fakeApi(overrides: Partial<{ muxFrames: MuxFrame[]; hostFrames: HostFra
         return { rpcId: request.rpcId, result: { ok: true, value: { name: 'main' } } }
       },
     },
+    fs: {
+      async listDir(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { path: request.payload.path ?? '', entries: [] } } }
+      },
+      async readText(request) {
+        return { rpcId: request.rpcId, result: { ok: true, value: { path: request.payload.path, text: '', truncated: false } } }
+      },
+    },
     workspace: {
       async list(request) {
         return { rpcId: request.rpcId, result: { ok: true, value: { items: [], archivedSessionIds: [] } } }

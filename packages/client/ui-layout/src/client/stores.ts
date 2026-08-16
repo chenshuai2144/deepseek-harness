@@ -1,7 +1,7 @@
 /**
  * The root entry's transient layout store: panel geometry as plain widths in
  * px (0 = closed), plus which sidebar occupant is showing, which workspace
- * occupant the right column shows, and the SCM file selection.
+ * occupant the right column shows, and the SCM / File selections.
  * Module level exports the factory only — a module-level handle would pin the
  * store's identity in the module cache (a de-facto singleton surviving plugin
  * reloads). register() receives the factory (exclusive use: the framework
@@ -19,7 +19,7 @@ import {
 export type SidebarView = 'agent' | 'scm'
 
 /** Which details occupant the frame renders while the panel is open. */
-export type DetailsView = 'home' | 'changes' | 'conversation' | 'scm'
+export type DetailsView = 'home' | 'changes' | 'files' | 'file' | 'conversation' | 'scm'
 
 /** SCM file the details column should show; viewing state, not a session event. */
 export interface ScmSelection {
@@ -29,14 +29,20 @@ export interface ScmSelection {
   staged: boolean
 }
 
+/** Workspace file the details column should show; viewing state, not a session event. */
+export interface FileSelection {
+  /** Workspace-relative path using `/`. */
+  path: string
+}
+
 /**
  * Layout store state: panel width preferences in px (0 = closed), plus the
  * narrow-viewport pair — `narrow` mirrors AppFrame's breakpoint reading
  * (viewport < SIDEBAR_AUTO_COLLAPSE) so toggleSidebar can pick semantics, and
  * `narrowExpanded` is the manual override that re-expands the auto-collapsed
  * sidebar over the squeezed center without rewriting the width preference.
- * `sidebarView` / `detailsView` / `scmSelection` are viewing state and never
- * enter the session log.
+ * `sidebarView` / `detailsView` / `scmSelection` / `fileSelection` are viewing
+ * state and never enter the session log.
  */
 export type LayoutState = {
   sidebar: number
@@ -46,6 +52,7 @@ export type LayoutState = {
   sidebarView: SidebarView
   detailsView: DetailsView
   scmSelection: ScmSelection | null
+  fileSelection: FileSelection | null
 }
 
 /**
@@ -61,6 +68,8 @@ type LayoutActions = {
   closeDetails: (draft: LayoutState) => void
   openWorkspaceHome: (draft: LayoutState) => void
   openChanges: (draft: LayoutState) => void
+  openFiles: (draft: LayoutState) => void
+  openFileDetails: (draft: LayoutState, selection: FileSelection) => void
   setSidebarView: (draft: LayoutState, view: SidebarView) => void
   openScmDetails: (draft: LayoutState, selection: ScmSelection) => void
 }
@@ -85,6 +94,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       sidebarView: 'agent',
       detailsView: 'home',
       scmSelection: null,
+      fileSelection: null,
     }),
     actions: {
       setSidebar: (d, px: number) => { d.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX) },
@@ -113,6 +123,15 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       openChanges: (d) => {
         d.detailsView = 'changes'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openFiles: (d) => {
+        d.detailsView = 'files'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openFileDetails: (d, selection: FileSelection) => {
+        d.fileSelection = selection
+        d.detailsView = 'file'
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
       setSidebarView: (d, view: SidebarView) => { d.sidebarView = view },

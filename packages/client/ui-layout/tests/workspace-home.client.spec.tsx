@@ -18,6 +18,7 @@ function home(over: Partial<WorkspaceHomeProps> = {}): WorkspaceHomeProps {
     useSessions: () => { throw new Error('unused') },
     useWorkspaces: () => { throw new Error('unused') },
     openChanges: vi.fn(),
+    openFiles: vi.fn(),
     openWorkspaceHome: vi.fn(),
     closeDetails: vi.fn(),
     t,
@@ -26,12 +27,15 @@ function home(over: Partial<WorkspaceHomeProps> = {}): WorkspaceHomeProps {
 }
 
 describe('WorkspaceHome', () => {
-  it('opens Changes from the live tile and closes from the header', () => {
+  it('opens Changes and File from the live tiles and closes from the header', () => {
     const openChanges = vi.fn()
+    const openFiles = vi.fn()
     const closeDetails = vi.fn()
-    render(<WorkspaceHome {...home({ openChanges, closeDetails })} />)
+    render(<WorkspaceHome {...home({ openChanges, openFiles, closeDetails })} />)
     fireEvent.click(screen.getByRole('button', { name: zh['tile.changes'] }))
     expect(openChanges).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: zh['tile.files'] }))
+    expect(openFiles).toHaveBeenCalledOnce()
     fireEvent.click(screen.getByRole('button', { name: zh['home.close'] }))
     expect(closeDetails).toHaveBeenCalledOnce()
   })

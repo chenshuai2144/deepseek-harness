@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-16-right-column-workspace-pane.md
-2026-08-16-right-column-workspace-pane.md: f3e1226e12d42337c1d2e4e469b73fcccf738015
-2026-08-16-right-column-workspace-pane.zh.md: 323b44ec746b051c5f6a23bd47dd68e02912b332
+2026-08-16-right-column-workspace-pane.md: 4d0cd0c28ca2f8976d5aa4062db7170445113f44
+2026-08-16-right-column-workspace-pane.zh.md: 88584f377bc5c1fcf25761cd0ca438a49409949c

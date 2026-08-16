@@ -120,6 +120,7 @@ New behavior attaches to a documented extension point. Changing the loop itself 
 | Add model-facing context | call `agent.inject()`; it lands in the next admitted request |
 | Add UI or editor integration | drive `ctx.agents` and render from `session/event` |
 | Add a workbench SCM panel | register `ctx.git` plus `ui-scm`; the model keeps using `bash` |
+| Add a workbench File pane | register `ctx.fs` plus `ui-file`; the model keeps using filesystem tools |
 | Add a Web Client Chat node | register a `ConversationNodeDefinition` + keyed renderer |
 | Add durable session state | extend `SessionEventMap`; render and replay from the log |
 | Generate session titles | register the sole `ctx.sessionTitle` provider |

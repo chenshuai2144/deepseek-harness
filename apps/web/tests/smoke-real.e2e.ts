@@ -144,6 +144,7 @@ async function detailsTrack(page: Page): Promise<number> {
 const UI_PLUGIN_DIRS = [
   'connection', 'runtime', 'ui-theme', 'locale', 'ui-layout', 'ui-sidebar',
   'ui-scm',
+  'ui-file',
   'ui-settings', 'ui-settings-general', 'ui-settings-models', 'ui-conversation',
   'ui-model-selection', 'ui-user-questions', 'ui-trajectory', '../session-query/session-log-export',
 ]

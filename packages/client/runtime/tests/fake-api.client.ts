@@ -195,6 +195,15 @@ export class FakeApiClient implements IApiClient {
     branch: payload => this.record('git.branch', payload, Promise.resolve(ok({ name: 'main' }))),
   }
 
+  readonly fs: IApiClient['fs'] = {
+    listDir: payload => this.record('fs.listDir', payload, Promise.resolve(ok({
+      path: (payload as { path?: string }).path ?? '', entries: [],
+    }))),
+    readText: payload => this.record('fs.readText', payload, Promise.resolve(ok({
+      path: (payload as { path: string }).path, text: '', truncated: false,
+    }))),
+  }
+
   // The archive-set field defaults at the binding below so list stubs keep
   // the pre-archive `{ items }` shape; a stub carrying the field wins.
   onWorkspaceList: (payload: unknown) => Promise<RpcResponse<{ items: never[]; archivedSessionIds?: never[] }>> =

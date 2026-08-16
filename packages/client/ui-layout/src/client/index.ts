@@ -54,8 +54,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     'sidebar.agent': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
      * Right-column workspace home. OCCUPIED by this package's WorkspaceHome.
-     * Live tiles open implemented occupants; Terminal / Browser stay
-     * off the home until they have a real view.
+     * Live tiles open implemented occupants; Terminal stays off the
+     * home until it has a real view.
      */
     'details.home': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
     /**
@@ -73,6 +73,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * passes the current file selection (or null while none is chosen).
      */
     'details.file': { kind: 'single'; scope: 'session'; owner: FileDetailsOwnerProps }
+    /**
+     * Simple Browser in the right column. OCCUPIED by ui-browser. The owner
+     * passes the committed http(s) address (or null before the first Go).
+     */
+    'details.browser': { kind: 'single'; scope: 'session'; owner: BrowserDetailsOwnerProps }
     /**
      * The whole center column, across both the no-session hero and a live
      * conversation. OCCUPIED by ui-conversation's ConversationRoot, which
@@ -147,6 +152,12 @@ export interface FileDetailsOwnerProps {
   selection: FileSelection | null
 }
 
+/** Browser owner share: the committed page address. */
+export interface BrowserDetailsOwnerProps {
+  /** Absolute http(s) URL, or null before the first accepted Go. */
+  href: string | null
+}
+
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
 export const inject = ['slots', 'theme', 'locale']
 
@@ -172,6 +183,7 @@ export function apply(ctx: ClientContext): void {
         'details.changes': { kind: 'single', scope: 'session' },
         'details.files': { kind: 'single', scope: 'session' },
         'details.file': { kind: 'single', scope: 'session' },
+        'details.browser': { kind: 'single', scope: 'session' },
         'details.scm': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
@@ -191,6 +203,7 @@ export function apply(ctx: ClientContext): void {
       inject: () => ({
         openChanges: () => { layout.openChanges() },
         openFiles: () => { layout.openFiles() },
+        openBrowser: () => { layout.openBrowser() },
         openWorkspaceHome: () => { layout.openWorkspaceHome() },
         closeDetails: () => { layout.closeDetails() },
       }),

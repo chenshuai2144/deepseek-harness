@@ -20,16 +20,17 @@ export type AppFrameProps =
   & PropsRuntime<'root'>
   & PropsRenderSlots<
     | 'sidebar.agent'
-    | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.scm' | 'shell.overlay'
+    | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.browser' | 'details.scm' | 'shell.overlay'
   >
   & PropsStore<ReturnType<typeof createLayoutStore>>
 
 /** Details slot name for one occupant. */
-const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details' | 'details.scm'> = {
+const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.browser' | 'details' | 'details.scm'> = {
   home: 'details.home',
   changes: 'details.changes',
   files: 'details.files',
   file: 'details.file',
+  browser: 'details.browser',
   conversation: 'details',
   scm: 'details.scm',
 }
@@ -196,7 +197,9 @@ export function AppFrame({
             ? renderSlot('details.scm', { selection: panels.scmSelection })
             : detailsSlot === 'details.file'
               ? renderSlot('details.file', { selection: panels.fileSelection })
-              : renderSlot(detailsSlot, {})}
+              : detailsSlot === 'details.browser'
+                ? renderSlot('details.browser', { href: panels.browserHref })
+                : renderSlot(detailsSlot, {})}
         </DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>

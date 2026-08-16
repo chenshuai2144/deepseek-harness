@@ -7,6 +7,7 @@ export const zh = {
   'home.close': '关闭工作区',
   'tile.changes': '更改',
   'tile.files': '文件',
+  'tile.browser': '浏览器',
 } as const
 
 /** The layout namespace key union. */
@@ -19,6 +20,7 @@ export const en: Record<LayoutKey, string> = {
   'home.close': 'Close workspace',
   'tile.changes': 'Changes',
   'tile.files': 'File',
+  'tile.browser': 'Browser',
 }
 
 /** Dictionary namespace owned by this plugin. */

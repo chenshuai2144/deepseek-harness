@@ -1,9 +1,9 @@
 /**
  * Right-column workspace home: chrome (+ back to home, close) and the live
- * Changes and File tiles. Terminal / Browser tiles register here only
+ * Changes, File, and Browser tiles. Terminal tiles register here only
  * when they have a real occupant.
  */
-import { IconBranchOutline16, IconFolderOpenOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconBranchOutline16, IconFolderOpenOutline16, IconGlobeOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { NS } from './locales.ts'
 import css from './WorkspaceHome.module.css'
@@ -14,6 +14,8 @@ export interface WorkspaceHomeInjected {
   openChanges: () => void
   /** Open the File tree. */
   openFiles: () => void
+  /** Open the Simple Browser. */
+  openBrowser: () => void
   /** Return this column to the workspace home. */
   openWorkspaceHome: () => void
   /** Close the details column. */
@@ -25,13 +27,14 @@ export type WorkspaceHomeProps =
   PropsRuntime<'details.home'> & PropsLocale<typeof NS> & WorkspaceHomeInjected
 
 /**
- * Workspace home: header chrome and the implemented Changes and File tiles.
+ * Workspace home: header chrome and the implemented Changes, File, and Browser tiles.
  * @param props - session runtime share, locale, and layout writes.
  * @returns the home body.
  */
 export function WorkspaceHome({
   openChanges,
   openFiles,
+  openBrowser,
   openWorkspaceHome,
   closeDetails,
   t,
@@ -69,6 +72,10 @@ export function WorkspaceHome({
         <button type="button" className={css.tile} onClick={() => { openFiles() }}>
           <IconFolderOpenOutline16 size={28} />
           <span>{t('tile.files')}</span>
+        </button>
+        <button type="button" className={css.tile} onClick={() => { openBrowser() }}>
+          <IconGlobeOutline14 size={28} />
+          <span>{t('tile.browser')}</span>
         </button>
       </div>
     </div>

@@ -35,6 +35,7 @@ const RELOADED_EXPECTED = join(SNAPSHOT_DIR, 'reloaded.expected.md')
 const SCM_EXPECTED = join(SNAPSHOT_DIR, 'scm.expected.md')
 const FILES_EXPECTED = join(SNAPSHOT_DIR, 'files.expected.md')
 const FILE_PREVIEW_EXPECTED = join(SNAPSHOT_DIR, 'file-preview.expected.md')
+const BROWSER_EXPECTED = join(SNAPSHOT_DIR, 'browser.expected.md')
 const MODE = webSnapshotMode()
 
 const PROMPT = 'Reply with the single word LIGHTHOUSE and stop.'
@@ -249,6 +250,26 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     const preview = await captureStableAria(page, '[data-testid="file-preview"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(FILE_PREVIEW_EXPECTED, preview, MODE)
     expect(preview).toContain('README.md')
+  })
+
+  it.skipIf(MODE === 'record')('opens Browser from the workspace home and accepts an address', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-browser'))
+    if (await page.getByTestId('workspace-home').count() === 0) {
+      await page.getByRole('button', { name: 'Back to workspace' }).click()
+      await page.getByTestId('workspace-home').waitFor({ timeout: 10_000 })
+    }
+    await page.getByRole('button', { name: 'Browser' }).click()
+    const panel = page.getByTestId('browser-panel')
+    await expect.poll(() => panel.count(), { timeout: 10_000 }).toBe(1)
+    await page.getByRole('textbox', { name: 'Address' }).fill('example.com')
+    await page.getByRole('button', { name: 'Go' }).click()
+    await expect.poll(
+      () => page.locator('iframe[title="Page preview"]').getAttribute('src'),
+      { timeout: 10_000 },
+    ).toBe('https://example.com/')
+    const snapshot = await captureStableAria(page, '[data-testid="browser-panel"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(BROWSER_EXPECTED, snapshot, MODE)
+    expect(snapshot).toContain('Page preview')
   })
 
   it.skipIf(MODE === 'record')('recovers the whole surface across a reload from the log alone', async () => {

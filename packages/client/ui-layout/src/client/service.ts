@@ -5,7 +5,8 @@
  * the per-session active view dissolved into ui-conversation's session store
  * (its only consumer). What remains here is the contract other plugins'
  * apply worlds reach for panel transitions (sidebar toggle from ui-sidebar,
- * details open/close from ui-conversation, File from ui-file, SCM details from ui-scm) — writes
+ * details open/close from ui-conversation, File from ui-file, Browser from
+ * ui-browser, SCM details from ui-scm) — writes
  * stay inside the store's declared action set, delivered as the registration's
  * bound actions.
  */
@@ -41,6 +42,13 @@ export interface ILayout {
    * @param selection - workspace-relative path.
    */
   openFileDetails(selection: FileSelection): void
+  /** Open the right-column Simple Browser. */
+  openBrowser(): void
+  /**
+   * Open the Simple Browser on one http(s) address.
+   * @param href - absolute http(s) URL already accepted by the Browser pane.
+   */
+  openBrowserPage(href: string): void
   /** Switch the sidebar occupant (`agent` sessions or `scm`). Viewing state. */
   setSidebarView(view: SidebarView): void
   /**
@@ -101,6 +109,19 @@ export class LayoutController implements ILayout {
    */
   openFileDetails(selection: FileSelection): void {
     this.#require().openFileDetails(selection)
+  }
+
+  /** Open the right-column Simple Browser. */
+  openBrowser(): void {
+    this.#require().openBrowser()
+  }
+
+  /**
+   * Open the Simple Browser on one http(s) address.
+   * @param href - absolute http(s) URL already accepted by the Browser pane.
+   */
+  openBrowserPage(href: string): void {
+    this.#require().openBrowserPage(href)
   }
 
   /**

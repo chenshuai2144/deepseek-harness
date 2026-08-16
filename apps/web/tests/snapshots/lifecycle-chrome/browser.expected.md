@@ -1,0 +1,6 @@
+- button "Back to workspace"
+- text: Browser
+- button "Close workspace"
+- textbox "Address": example.com
+- button "Go"
+- iframe "Page preview"

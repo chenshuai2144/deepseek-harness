@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-16-right-column-file-pane.md
-2026-08-16-right-column-file-pane.md: 9c7425cc4105f992d6386f8123c3849f072342e7
-2026-08-16-right-column-file-pane.zh.md: 54f48f9663203bcaabe0c6fe09362b4db20267fd
+2026-08-16-right-column-file-pane.md: 23417c78318ee06c7f93cc11b374e2a4ee84bc63
+2026-08-16-right-column-file-pane.zh.md: f77535453e524c6e4d42d2e6496097d1a8d420f7

@@ -21,7 +21,7 @@ describe('createLayoutStore', () => {
     const { store } = createLayoutStore().create()
     expect(store.getSnapshot()).toEqual({
       sidebar: SIDEBAR_DEFAULT, details: DETAILS_DEFAULT, narrow: false, narrowExpanded: false,
-      sidebarView: 'agent', detailsView: 'home', scmSelection: null, fileSelection: null,
+      sidebarView: 'agent', detailsView: 'home', scmSelection: null, fileSelection: null, browserHref: null,
     })
   })
 
@@ -118,6 +118,19 @@ describe('createLayoutStore', () => {
     })
   })
 
+  it('openBrowser and openBrowserPage switch the details occupant and record the address', () => {
+    const { store, actions } = createLayoutStore().create()
+    actions.closeDetails()
+    actions.openBrowser()
+    expect(store.getSnapshot()).toMatchObject({ detailsView: 'browser', details: DETAILS_DEFAULT, browserHref: null })
+    actions.openBrowserPage('https://example.com/')
+    expect(store.getSnapshot()).toMatchObject({
+      detailsView: 'browser',
+      browserHref: 'https://example.com/',
+      details: DETAILS_DEFAULT,
+    })
+  })
+
   it('openScmDetails records the file, switches the details occupant, and opens the panel', () => {
     const { store, actions } = createLayoutStore().create()
     actions.openScmDetails({ path: 'src/a.ts', staged: false })
@@ -148,6 +161,7 @@ describe('createLayoutStore', () => {
       detailsView: 'home',
       scmSelection: null,
       fileSelection: null,
+      browserHref: null,
     })
   })
 })

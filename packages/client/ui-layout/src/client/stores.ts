@@ -19,7 +19,7 @@ import {
 export type SidebarView = 'agent' | 'scm'
 
 /** Which details occupant the frame renders while the panel is open. */
-export type DetailsView = 'home' | 'changes' | 'files' | 'file' | 'conversation' | 'scm'
+export type DetailsView = 'home' | 'changes' | 'files' | 'file' | 'browser' | 'conversation' | 'scm'
 
 /** SCM file the details column should show; viewing state, not a session event. */
 export interface ScmSelection {
@@ -41,8 +41,8 @@ export interface FileSelection {
  * (viewport < SIDEBAR_AUTO_COLLAPSE) so toggleSidebar can pick semantics, and
  * `narrowExpanded` is the manual override that re-expands the auto-collapsed
  * sidebar over the squeezed center without rewriting the width preference.
- * `sidebarView` / `detailsView` / `scmSelection` / `fileSelection` are viewing
- * state and never enter the session log.
+ * `sidebarView` / `detailsView` / `scmSelection` / `fileSelection` /
+ * `browserHref` are viewing state and never enter the session log.
  */
 export type LayoutState = {
   sidebar: number
@@ -53,6 +53,7 @@ export type LayoutState = {
   detailsView: DetailsView
   scmSelection: ScmSelection | null
   fileSelection: FileSelection | null
+  browserHref: string | null
 }
 
 /**
@@ -70,6 +71,8 @@ type LayoutActions = {
   openChanges: (draft: LayoutState) => void
   openFiles: (draft: LayoutState) => void
   openFileDetails: (draft: LayoutState, selection: FileSelection) => void
+  openBrowser: (draft: LayoutState) => void
+  openBrowserPage: (draft: LayoutState, href: string) => void
   setSidebarView: (draft: LayoutState, view: SidebarView) => void
   openScmDetails: (draft: LayoutState, selection: ScmSelection) => void
 }
@@ -95,6 +98,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       detailsView: 'home',
       scmSelection: null,
       fileSelection: null,
+      browserHref: null,
     }),
     actions: {
       setSidebar: (d, px: number) => { d.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX) },
@@ -132,6 +136,15 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       openFileDetails: (d, selection: FileSelection) => {
         d.fileSelection = selection
         d.detailsView = 'file'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openBrowser: (d) => {
+        d.detailsView = 'browser'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openBrowserPage: (d, href: string) => {
+        d.browserHref = href
+        d.detailsView = 'browser'
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
       setSidebarView: (d, view: SidebarView) => { d.sidebarView = view },

@@ -47,3 +47,6 @@
 - button "File":
   - img
   - text: File
+- button "Browser":
+  - img
+  - text: Browser

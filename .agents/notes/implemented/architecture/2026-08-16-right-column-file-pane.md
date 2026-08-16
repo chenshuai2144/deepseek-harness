@@ -28,4 +28,4 @@ This note owns the File tile and the `fs.*` GUI contract. The workspace-pane not
 
 ## Consequences
 
-A connected Session can open File from the workspace home without a tool click. A remote browser cannot drive host filesystem reads. Terminal and Browser remain later PRs. There is no editor, watcher, or HTTP file serving.
+A connected Session can open File from the workspace home without a tool click. A remote browser cannot drive host filesystem reads. Terminal remains a later PR. There is no editor, watcher, or HTTP file serving.

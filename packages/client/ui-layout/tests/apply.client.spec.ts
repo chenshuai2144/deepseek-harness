@@ -55,6 +55,7 @@ describe('ui-layout client apply', () => {
     expect(slots.spec('details.changes')).toEqual({ kind: 'single', scope: 'session' })
     expect(slots.spec('details.files')).toEqual({ kind: 'single', scope: 'session' })
     expect(slots.spec('details.file')).toEqual({ kind: 'single', scope: 'session' })
+    expect(slots.spec('details.browser')).toEqual({ kind: 'single', scope: 'session' })
     expect(slots.spec('details.scm')).toEqual({ kind: 'single', scope: 'session' })
     expect(slots.entries('details.home')).toHaveLength(1)
   })
@@ -67,6 +68,7 @@ describe('ui-layout client apply', () => {
       setSidebar: vi.fn(), setDetails: vi.fn(), toggleSidebar: vi.fn(), setNarrow: vi.fn(),
       openDetails: vi.fn(), closeDetails: vi.fn(), openWorkspaceHome: vi.fn(), openChanges: vi.fn(),
       openFiles: vi.fn(), openFileDetails: vi.fn(),
+      openBrowser: vi.fn(), openBrowserPage: vi.fn(),
       setSidebarView: vi.fn(), openScmDetails: vi.fn(),
     }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)

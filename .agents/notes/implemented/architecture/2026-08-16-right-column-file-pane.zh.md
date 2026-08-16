@@ -28,4 +28,4 @@ File 是工作区首页磁贴，带两个 layout 占用方。[`ui-layout`](../..
 
 ## 后果
 
-已连接的 Session 不必点工具卡就能从工作区首页打开 File。远程浏览器不能驱动主机文件系统读取。Terminal 与 Browser 仍留到后续 PR。没有编辑器、监视器或 HTTP 文件服务。
+已连接的 Session 不必点工具卡就能从工作区首页打开 File。远程浏览器不能驱动主机文件系统读取。Terminal 仍留到后续 PR。没有编辑器、监视器或 HTTP 文件服务。

@@ -194,6 +194,9 @@
     - id: ui-file
       name: '@deepseek-ai/dsh-client-ui-file'
 
+    - id: ui-browser
+      name: '@deepseek-ai/dsh-client-ui-browser'
+
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'
 

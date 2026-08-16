@@ -66,6 +66,7 @@
     { "path": "./packages/client/ui-sidebar" },
     { "path": "./packages/client/ui-scm" },
     { "path": "./packages/client/ui-file" },
+    { "path": "./packages/client/ui-browser" },
     { "path": "./packages/client/ui-conversation" },
     { "path": "./packages/client/ui-tool" },
     { "path": "./packages/client/ui-deliverables" },

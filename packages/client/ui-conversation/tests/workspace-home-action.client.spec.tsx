@@ -19,6 +19,15 @@ describe('WorkspaceHomeAction', () => {
       useSession={() => { throw new Error('unused') }}
       useSessions={() => { throw new Error('unused') }}
       useWorkspaces={() => { throw new Error('unused') }}
+      useProjection={() => undefined}
+      useInput={() => { throw new Error('unused') }}
+      inputActions={{
+        setDraft: () => {},
+        addImages: () => true,
+        removeImage: () => {},
+        pruneImages: () => {},
+        submit: () => {},
+      }}
       openWorkspaceHome={openWorkspaceHome}
       t={t}
     />)

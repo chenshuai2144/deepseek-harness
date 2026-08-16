@@ -43,6 +43,10 @@ function child(name: string, type: FsDirEntry['type'], absolute: string): FsDirE
   return { name, type, target: target(absolute) }
 }
 
+async function* textStream(...chunks: string[]): AsyncIterable<string> {
+  yield* chunks
+}
+
 async function harness(fs?: Partial<FileSystem>): Promise<ReturnType<typeof createApiProxy>> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
@@ -124,7 +128,7 @@ describe('fs.* RPC', () => {
       contains: vi.fn(() => true),
       processPath: vi.fn((item: FsTarget) => item.displayPath),
       stat: vi.fn(async () => ({ version: 'v' as never, type: 'file' as const, size: huge.length })),
-      streamText: vi.fn(async () => [huge]),
+      streamText: vi.fn(async () => textStream(huge)),
     }
     const api = await harness(fs)
     const value = expectOk(await api.fs.readText(
@@ -208,7 +212,7 @@ describe('fs.* RPC', () => {
     const small = await harness({
       ...contained,
       stat: vi.fn(async () => ({ version: 'v' as never, type: 'file' as const, size: 5 })),
-      streamText: vi.fn(async () => ['hello']),
+      streamText: vi.fn(async () => textStream('hello')),
     })
     expect(expectOk(await small.fs.readText(
       request({ cwd: CWD, path: 'notes.md' }),
@@ -242,7 +246,7 @@ describe('fs.* RPC', () => {
       stat: vi.fn(async () => ({ version: 'v' as never, type: 'file' as const })),
       streamText: vi.fn(async (_target, signal?: AbortSignal) => {
         if (signal?.aborted) throw new FsError('aborted', 'FS_ABORTED')
-        return ['x']
+        return textStream('x')
       }),
     })
     expect(expectErr(await hanging.fs.readText(

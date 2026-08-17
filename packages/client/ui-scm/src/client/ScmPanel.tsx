@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { diffLines } from 'diff'
 import type { GitChange, GitStatus, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ScmSelection } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -17,8 +18,10 @@ export interface ScmPanelInjected {
   unstage: IApiClient['git']['unstage']
   /** Privileged git.commit. */
   commit: IApiClient['git']['commit']
+  /** Privileged git.diff used to calculate aggregate line counts. */
+  diff: IApiClient['git']['diff']
   /** Open the details column on one SCM file. */
-  openScmDetails: (selection: ScmSelection) => void
+  openScmDetails: (selection: ScmSelection, order: readonly ScmSelection[]) => void
   /** Status poll period while this view is mounted. */
   refreshIntervalMs: number
   /** Return the right column to the workspace home. */
@@ -43,6 +46,7 @@ export function ScmPanel({
   stage,
   unstage,
   commit,
+  diff,
   openScmDetails,
   refreshIntervalMs,
   showHome,
@@ -56,6 +60,7 @@ export function ScmPanel({
   const [message, setMessage] = useState('')
   const [commitHint, setCommitHint] = useState<string | undefined>(undefined)
   const [busy, setBusy] = useState(false)
+  const [lineStats, setLineStats] = useState<{ additions: number; deletions: number } | undefined>(undefined)
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (cwd === undefined) {
@@ -93,6 +98,47 @@ export function ScmPanel({
       window.clearInterval(timer)
     }
   }, [refresh, refreshIntervalMs, t])
+
+  const changeOrder = useMemo<readonly ScmSelection[]>(() => snapshot === undefined
+    ? []
+    : [
+      ...snapshot.unstaged.map(row => ({ path: row.path, staged: false as const })),
+      ...snapshot.staged.map(row => ({ path: row.path, staged: true as const })),
+    ], [snapshot])
+  const statsKey = cwd === undefined
+    ? ''
+    : `${cwd}\u0000${changeOrder.map(item => `${item.staged ? 's' : 'u'}:${item.path}`).join('\u0000')}`
+  const statsRequest = useRef({ cwd, changeOrder })
+  statsRequest.current = { cwd, changeOrder }
+
+  useEffect(() => {
+    const request = statsRequest.current
+    if (request.cwd === undefined || request.changeOrder.length === 0) {
+      setLineStats({ additions: 0, deletions: 0 })
+      return
+    }
+    const workspace = request.cwd
+    const controller = new AbortController()
+    void Promise.all(request.changeOrder.map(async (selection) => {
+      const response = await diff({ cwd: workspace, ...selection }, controller.signal)
+      if (!response.result.ok) throw new Error(gitFailureCopy(response.result.error.code, t))
+      return response.result.value
+    })).then((files) => {
+      if (controller.signal.aborted) return
+      let additions = 0
+      let deletions = 0
+      for (const file of files) {
+        for (const part of diffLines(file.oldText ?? '', file.newText)) {
+          if (part.added) additions += part.count
+          if (part.removed) deletions += part.count
+        }
+      }
+      setLineStats({ additions, deletions })
+    }).catch(() => {
+      if (!controller.signal.aborted) setLineStats(undefined)
+    })
+    return () => { controller.abort() }
+  }, [diff, statsKey, t])
 
   const mutate = useCallback(async (work: () => Promise<void>) => {
     setBusy(true)
@@ -153,10 +199,17 @@ export function ScmPanel({
   }
 
   const canCommit = snapshot.staged.length > 0 && !busy
+  const changedFileCount = new Set(changeOrder.map(item => item.path)).size
 
   return (
     <div className={css.root} data-testid="scm-panel">
       {chrome}
+      <div className={css.summary} aria-label={t('summary.aria')}>
+        <span>{t('summary.files', { count: changedFileCount })}</span>
+        <span className={css.additions}>+{lineStats?.additions ?? '–'}</span>
+        <span className={css.deletions}>−{lineStats?.deletions ?? '–'}</span>
+        <span className={css.sync}>↑{snapshot.ahead} ↓{snapshot.behind}</span>
+      </div>
       {snapshot.unstaged.length === 0 && snapshot.staged.length === 0
         ? <p className={css.empty}>{t('empty.clean')}</p>
         : (
@@ -181,7 +234,7 @@ export function ScmPanel({
                   </Button>
                 )
                 : null}
-              onSelect={(path) => { openScmDetails({ path, staged: false }) }}
+              onSelect={(path) => { openScmDetails({ path, staged: false }, changeOrder) }}
               onAction={(path) => {
                 void mutate(async () => {
                   const result = (await stage({ cwd, paths: [path] })).result
@@ -193,7 +246,23 @@ export function ScmPanel({
               title={t('section.staged')}
               rows={snapshot.staged}
               actionLabel={t('action.unstage')}
-              onSelect={(path) => { openScmDetails({ path, staged: true }) }}
+              extra={snapshot.staged.length > 0
+                ? (
+                  <Button
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      void mutate(async () => {
+                        const result = (await unstage({ cwd, paths: snapshot.staged.map(row => row.path) })).result
+                        if (!result.ok) throw new Error(gitFailureCopy(result.error.code, t))
+                      })
+                    }}
+                  >
+                    {t('action.unstageAll')}
+                  </Button>
+                )
+                : null}
+              onSelect={(path) => { openScmDetails({ path, staged: true }, changeOrder) }}
               onAction={(path) => {
                 void mutate(async () => {
                   const result = (await unstage({ cwd, paths: [path] })).result
@@ -229,7 +298,7 @@ export function ScmPanel({
                 const result = (await commit({ cwd, message: trimmed })).result
                 if (!result.ok) throw new Error(gitFailureCopy(result.error.code, t))
                 setMessage('')
-                setCommitHint(undefined)
+                setCommitHint(t('commit.success', { commit: result.value.commit.slice(0, 7) }))
               })
             }}
           >

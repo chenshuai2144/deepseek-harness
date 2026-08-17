@@ -2,7 +2,7 @@
 
 English | [中文](workspace.zh.md)
 
-A workspace is the persistent record of a directory the user works in: a stable id over a canonical path, a display title, and the ordered account of sessions that belong to it. The subsystem is one package ([dsh-workspace](../../packages/workspace/workspace), `ctx.workspaceRegistry`) — an optional host-side capability, not part of the agent-loop spine, and invisible to models (no tools, no prompt text, no session events). It stores its records through the [storage domain form](storage.md) and validates session membership against [`SessionHeader.cwd`](persistence.md#sessionheader--metadata-beside-the-log), so `storageDomain` and `sessionPersistence` are mandatory startup dependencies: an unavailable persistence peer leaves the plugin pending rather than being mistaken for an empty history. Design record: [domain KV storage Agent Note](../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md); bootstrap and GUI ordering: [Workspace UI product-flow Agent Note](../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md).
+A workspace is the persistent record of a directory the user works in: a stable id over a canonical path, a display title, and the ordered account of sessions that belong to it. The persistent registry is one package ([dsh-workspace](../../packages/workspace/workspace), `ctx.workspaceRegistry`) — an optional host-side capability, not part of the agent-loop spine, and invisible to models (no tools, no prompt text, no session events). It stores its records through the [storage domain form](storage.md) and validates session membership against [`SessionHeader.cwd`](persistence.md#sessionheader--metadata-beside-the-log), so `storageDomain` and `sessionPersistence` are mandatory startup dependencies: an unavailable persistence peer leaves the plugin pending rather than being mistaken for an empty history. Design record: [domain KV storage Agent Note](../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md); bootstrap and GUI ordering: [Workspace UI product-flow Agent Note](../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md).
 
 Source: [`packages/workspace/workspace/src/types.ts`](../../packages/workspace/workspace/src/types.ts)
 
@@ -125,6 +125,8 @@ Sessions get their cwd at create time from whoever creates them, not from this r
 
 [dsh-host-apiproxy](../../packages/host/apiproxy) is the product consumer: it serves workspace CRUD to GUI clients over `ctx.workspaceRegistry` and performs the create-session-then-attach flow above. [dsh-agent-instructions](../../packages/context/agent-instructions) is **not** a consumer despite the name: it discovers AGENTS.md-style instruction files under an agent's own cwd and never touches `ctx.workspaceRegistry` — the shared word refers to the user's working directory, not to this registry's entities.
 
+The optional [`ctx.git`](../../packages/git/git) companion serves the human SCM panel against a session workspace through privileged host RPC. It does not alter workspace records or add a model-facing Git tool; the model continues to use `bash`.
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -148,6 +150,69 @@ abstract capability(): DirectoryPickerCapability
 ```
 
 Source: [`packages/host/directory-picker/src/index.ts:131`](../../packages/host/directory-picker/src/index.ts)
+
+<a id="ctxgit--git-abstract-seam"></a>
+
+### `ctx.git` — `Git` (abstract seam)
+
+Abstract workspace Git service. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.git` (one implementation per context; loading a second throws, cordis' standard duplicate-service behavior).
+
+```ts cordis-catalog
+/**
+ * Read staged and unstaged changes at a workspace root.
+ * @param cwd - absolute workspace root.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the status lists and current branch.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract status(cwd: string, signal?: AbortSignal): Promise<GitStatus>
+
+/**
+ * Read both sides of one path for a read-only diff.
+ * @param cwd - absolute workspace root.
+ * @param path - workspace-relative path.
+ * @param staged - true reads index vs HEAD; false reads worktree vs index.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns old and new text for {@link GitFileDiff}.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract diff(cwd: string, path: string, staged: boolean, signal?: AbortSignal): Promise<GitFileDiff>
+
+/**
+ * Stage paths into the index.
+ * @param cwd - absolute workspace root.
+ * @param paths - workspace-relative paths; empty is a no-op.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract stage(cwd: string, paths: readonly string[]): Promise<void>
+
+/**
+ * Unstage paths from the index (keep the worktree).
+ * @param cwd - absolute workspace root.
+ * @param paths - workspace-relative paths; empty is a no-op.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract unstage(cwd: string, paths: readonly string[]): Promise<void>
+
+/**
+ * Create a commit from the current index.
+ * @param cwd - absolute workspace root.
+ * @param message - non-blank commit message.
+ * @returns the new commit object name.
+ * @throws {GitError} `empty-message` / `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract commit(cwd: string, message: string): Promise<GitCommitResult>
+
+/**
+ * Read the current branch name.
+ * @param cwd - absolute workspace root.
+ * @returns the branch name, or `HEAD` when detached.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract branch(cwd: string): Promise<GitBranchInfo>
+```
+
+Source: [`packages/git/git/src/index.ts:86`](../../packages/git/git/src/index.ts)
 
 <a id="ctxworkspaceregistry--workspaceregistry"></a>
 

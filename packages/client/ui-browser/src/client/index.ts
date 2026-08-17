@@ -36,7 +36,7 @@ export function apply(ctx: ClientContext): void {
         openPage: (href: string) => { ctx.layout.openBrowserPage(href) },
         showHome: () => { ctx.layout.openWorkspaceHome() },
         closeDetails: () => { ctx.layout.closeDetails() },
-        productOrigin: globalThis.location?.origin,
+        ...(typeof globalThis.location === 'undefined' ? {} : { productOrigin: globalThis.location.origin }),
       }),
     }, BrowserPanel),
   )

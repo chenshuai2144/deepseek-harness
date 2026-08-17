@@ -452,6 +452,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'tool-fs executes read/write/edit through ctx.fs; fs-sandbox fences mutations by the shared sandbox mode; fs-observation-policy contributes observed-state checks through the fs/* event gate.',
   },
   {
+    key: 'git',
+    pkg: 'git',
+    title: 'Workspace Git provider seam',
+    mode: 'seam',
+    implementations: ['git-local'],
+    consumers: ['apiproxy'],
+    note: 'Serves the human SCM panel through privileged Host RPC; the model continues to use bash for Git operations.',
+  },
+  {
     key: 'compaction',
     pkg: 'compaction',
     title: 'Compaction seam',

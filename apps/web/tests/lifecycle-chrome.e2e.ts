@@ -36,6 +36,8 @@ const SCM_EXPECTED = join(SNAPSHOT_DIR, 'scm.expected.md')
 const FILES_EXPECTED = join(SNAPSHOT_DIR, 'files.expected.md')
 const FILE_PREVIEW_EXPECTED = join(SNAPSHOT_DIR, 'file-preview.expected.md')
 const BROWSER_EXPECTED = join(SNAPSHOT_DIR, 'browser.expected.md')
+const TASK_CENTER_EXPECTED = join(SNAPSHOT_DIR, 'task-center.expected.md')
+const APP_COMMANDS_EXPECTED = join(SNAPSHOT_DIR, 'app-commands.expected.md')
 const MODE = webSnapshotMode()
 
 const PROMPT = 'Reply with the single word LIGHTHOUSE and stop.'
@@ -221,13 +223,36 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     expect((turnEnds[0] as SessionEvent & { data: { reason: { kind: string } } }).data.reason.kind).toBe('completed')
   }, 60_000)
 
+  it.skipIf(MODE === 'record')('opens the global task center and application commands', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-global-workbench'))
+    await page.getByRole('button', { name: 'Open task center' }).click()
+    const taskCenter = page.locator('[data-global-workbench="tasks"]')
+    await taskCenter.waitFor({ timeout: 10_000 })
+    const tasks = await captureStableAria(page, '[data-global-workbench="tasks"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(TASK_CENTER_EXPECTED, tasks, MODE)
+    expect(tasks).toContain('heading "Task center"')
+    await page.keyboard.press('Escape')
+    await expect.poll(() => taskCenter.count()).toBe(0)
+
+    await page.keyboard.press('Control+K')
+    const commands = page.locator('[data-global-workbench="commands"]')
+    await commands.waitFor({ timeout: 10_000 })
+    const commandSnapshot = await captureStableAria(page, '[data-global-workbench="commands"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(APP_COMMANDS_EXPECTED, commandSnapshot, MODE)
+    expect(commandSnapshot).toContain('option "Open Settings"')
+    await page.keyboard.press('Escape')
+    await expect.poll(() => commands.count()).toBe(0)
+  }, 60_000)
+
   it.skipIf(MODE === 'record')('opens Changes from the workspace home', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-scm'))
     await page.getByRole('button', { name: 'Changes' }).click()
-    await expect.poll(() => page.getByTestId('scm-panel').count(), { timeout: 10_000 }).toBe(1)
+    const panel = page.getByTestId('scm-panel')
+    await expect.poll(() => panel.count(), { timeout: 10_000 }).toBe(1)
+    await expect.poll(async () => panel.innerText(), { timeout: 30_000 }).not.toContain('Loading diff')
     const snapshot = await captureStableAria(page, '[data-testid="scm-panel"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(SCM_EXPECTED, snapshot, MODE)
-    expect(snapshot).toContain('Not a git repository')
+    expect(snapshot).not.toContain('Loading diff')
   })
 
   it.skipIf(MODE === 'record')('opens File from the workspace home and previews a text file', async () => {
@@ -245,8 +270,10 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     await expect.poll(async () => (await panel.innerText()).includes('README.md'), { timeout: 10_000 }).toBe(true)
     const tree = await captureStableAria(page, '[data-testid="file-panel"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(FILES_EXPECTED, tree, MODE)
-    await page.getByRole('button', { name: 'README.md' }).click()
-    await expect.poll(() => page.getByTestId('file-preview').count(), { timeout: 10_000 }).toBe(1)
+    await panel.getByRole('button', { name: 'README.md', exact: true }).click()
+    const previewPanel = page.getByTestId('file-preview')
+    await expect.poll(() => previewPanel.count(), { timeout: 10_000 }).toBe(1)
+    await expect.poll(async () => (await previewPanel.innerText()).includes('README.md'), { timeout: 10_000 }).toBe(true)
     const preview = await captureStableAria(page, '[data-testid="file-preview"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(FILE_PREVIEW_EXPECTED, preview, MODE)
     expect(preview).toContain('README.md')
@@ -261,15 +288,17 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     await page.getByRole('button', { name: 'Browser' }).click()
     const panel = page.getByTestId('browser-panel')
     await expect.poll(() => panel.count(), { timeout: 10_000 }).toBe(1)
-    await page.getByRole('textbox', { name: 'Address' }).fill('example.com')
-    await page.getByRole('button', { name: 'Go' }).click()
+    await panel.getByRole('textbox', { name: 'Address' }).fill('example.com')
+    await panel.getByRole('button', { name: 'Go', exact: true }).click()
     await expect.poll(
-      () => page.locator('iframe[title="Page preview"]').getAttribute('src'),
+      () => panel.locator('iframe[title="Page preview"]').getAttribute('src'),
       { timeout: 10_000 },
     ).toBe('https://example.com/')
+    await expect.poll(() => panel.getByRole('textbox', { name: 'Address' }).inputValue(), { timeout: 10_000 })
+      .toBe('https://example.com/')
     const snapshot = await captureStableAria(page, '[data-testid="browser-panel"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(BROWSER_EXPECTED, snapshot, MODE)
-    expect(snapshot).toContain('Page preview')
+    expect(snapshot).toContain('iframe')
   })
 
   it.skipIf(MODE === 'record')('recovers the whole surface across a reload from the log alone', async () => {
@@ -326,7 +355,18 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
   it.skipIf(MODE === 'record')('keeps the fixture inventory closed', async () => {
     expect(tripwire.warnings).toEqual([])
     await assertFixtureInventory(SNAPSHOT_DIR, [
-      'session.jsonl', 'command-menu.expected.md', 'command-menu-fuzzy.expected.md', 'hero.expected.md', 'plan-active.expected.md', 'reloaded.expected.md', 'scm.expected.md', 'files.expected.md', 'file-preview.expected.md',
+      'session.jsonl',
+      'command-menu.expected.md',
+      'command-menu-fuzzy.expected.md',
+      'hero.expected.md',
+      'plan-active.expected.md',
+      'reloaded.expected.md',
+      'scm.expected.md',
+      'files.expected.md',
+      'file-preview.expected.md',
+      'browser.expected.md',
+      'task-center.expected.md',
+      'app-commands.expected.md',
     ])
   })
 })

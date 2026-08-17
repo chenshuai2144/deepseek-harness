@@ -22,6 +22,7 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot()).toEqual({
       sidebar: SIDEBAR_DEFAULT, details: DETAILS_DEFAULT, narrow: false, narrowExpanded: false,
       sidebarView: 'agent', detailsView: 'home', scmSelection: null, fileSelection: null, browserHref: null,
+      scmOrder: [], recentFiles: [], quickFileRequest: 0, globalOverlay: null,
     })
   })
 
@@ -160,8 +161,12 @@ describe('createLayoutStore', () => {
       sidebarView: 'agent',
       detailsView: 'home',
       scmSelection: null,
+      scmOrder: [],
       fileSelection: null,
+      recentFiles: [],
+      quickFileRequest: 0,
       browserHref: null,
+      globalOverlay: null,
     })
   })
 })

@@ -21,7 +21,7 @@ export type {
 } from './rpc.ts'
 export { HostConnectionService } from './rpc-host.ts'
 export { dispatchIpcFetch, type IpcFetchDispatch } from './ipc-fetch-host.ts'
-export type { DshDesktopBridge, IpcFetchHead, IpcFetchPort, IpcFetchPull, IpcFetchRequest } from './ipc-fetch.ts'
+export type { DesktopNotification, DshDesktopBridge, IpcFetchHead, IpcFetchPort, IpcFetchPull, IpcFetchRequest } from './ipc-fetch.ts'
 
 export { API_PATH, HOST_EVENTS_PATH, MUX_EVENTS_PATH } from './api-path.ts'
 

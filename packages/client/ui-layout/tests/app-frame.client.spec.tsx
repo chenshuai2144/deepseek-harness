@@ -13,10 +13,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
+import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
 import { SIDEBAR_COLLAPSED } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
 import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
+import { LayoutController } from '@deepseek-ai/dsh-client-ui-layout/src/client/service.ts'
+import { zh } from '@deepseek-ai/dsh-client-ui-layout/src/client/locales.ts'
 import type {
   SessionId, SessionListState, WorkspaceListState,
 } from '@deepseek-ai/dsh-client-runtime/client'
@@ -94,6 +97,9 @@ function mountFrame() {
       useSessions={useSessions}
       useWorkspaces={((sel: (s: WorkspaceListState) => unknown) => sel(workspaceState)) as never}
       SessionProvider={SessionProviderStub}
+      commands={new LayoutController()}
+      openSession={vi.fn()}
+      t={makeTranslate(zh)}
     />
   )
   const utils = render(element())

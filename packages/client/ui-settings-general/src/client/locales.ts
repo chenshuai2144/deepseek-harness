@@ -3,6 +3,9 @@
 /** Simplified Chinese dictionary (the key-set source of truth). */
 export const zh = {
   'trigger': '设置',
+  'command.open': '打开设置',
+  'command.plugins': '打开插件',
+  'command.pluginsKeyword': '插件管理',
   'title': '设置',
   'close': '关闭',
   'openDocument': '打开配置文件',
@@ -16,6 +19,9 @@ export type SettingsKey = keyof typeof zh
 /** English dictionary, checked complete against the zh key set. */
 export const en = {
   'trigger': 'Settings',
+  'command.open': 'Open Settings',
+  'command.plugins': 'Open Plugins',
+  'command.pluginsKeyword': 'Plugin management',
   'title': 'Settings',
   'close': 'Close',
   'openDocument': 'Open configuration file',

@@ -1,6 +1,9 @@
 - button "Back to workspace"
 - text: Browser
 - button "Close workspace"
-- textbox "Address": example.com
+- img
+- textbox "Address":
+  - /placeholder: Enter an https address
+  - text: https://example.com/
 - button "Go"
-- iframe "Page preview"
+- iframe

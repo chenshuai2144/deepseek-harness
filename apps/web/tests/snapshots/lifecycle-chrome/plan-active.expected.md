@@ -17,6 +17,15 @@
     - img
     - text: workspace
   - treeitem "New Session" [selected]
+- button "Open task center":
+  - img
+  - text: Task center
+- button "Open notification inbox":
+  - img
+  - text: Notifications
+- button "Open command palette":
+  - img
+  - text: Commands Ctrl K
 - button "Settings":
   - img
   - text: Settings
@@ -38,15 +47,22 @@
   - text: DeepSeek-V4-Flash
   - img
 - button "Send message" [disabled]
-- button "Open workspace home"
-- text: Workspace
-- button "Close workspace"
-- button "Changes":
-  - img
-  - text: Changes
-- button "File":
-  - img
-  - text: File
-- button "Browser":
-  - img
-  - text: Browser
+- button "Open task overview"
+- text: Task overview
+- button "Close task overview"
+- region "Task status": Ready Plan mode
+- region "Task metrics": 0 Subagents 0 Background 0 Tools 0 Queue
+- region "Live activity":
+  - heading "Activity" [level=2]
+  - paragraph: No activity is currently in progress.
+- region "Workspace tools":
+  - heading "Workspace" [level=2]
+  - button "Changes":
+    - img
+    - text: Changes
+  - button "File":
+    - img
+    - text: File
+  - button "Browser":
+    - img
+    - text: Browser

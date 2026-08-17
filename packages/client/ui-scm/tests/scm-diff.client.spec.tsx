@@ -12,6 +12,11 @@ afterEach(cleanup)
 const SESSION = 'session' as SessionId
 const t: ScmDiffProps['t'] = makeTranslate(zh)
 
+function rejectNonError<T>(): Promise<T> {
+  // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Exercises the unknown rejection fallback.
+  return new Promise((_resolve, reject) => { reject('nope') })
+}
+
 function ok<T>(value: T): Promise<RpcResponse<T>> {
   return Promise.resolve({ rpcId: 'rpc' as RpcResponse<T>['rpcId'], result: { ok: true, value } })
 }
@@ -45,9 +50,11 @@ function props(over: Partial<ScmDiffProps> = {}): ScmDiffProps {
   return {
     sessionId: SESSION,
     selection: { path: 'a.ts', staged: false },
+    order: [{ path: 'a.ts', staged: false }],
     useSessions: <T,>(select: (snapshot: SessionListState) => T) => select(state),
     useWorkspaces: () => { throw new Error('unused') },
     diff: over.diff ?? vi.fn(() => ok<GitFileDiff>({ path: 'a.ts', oldText: 'old', newText: 'new' })),
+    openScmDetails: over.openScmDetails ?? vi.fn(),
     showChanges: over.showChanges ?? vi.fn(),
     showHome: over.showHome ?? vi.fn(),
     closeDetails: over.closeDetails ?? vi.fn(),
@@ -75,6 +82,19 @@ describe('ScmDiff', () => {
     expect(closeDetails).toHaveBeenCalledOnce()
   })
 
+  it('moves to the adjacent changed file', () => {
+    const openScmDetails = vi.fn()
+    const order = [
+      { path: 'a.ts', staged: false },
+      { path: 'b.ts', staged: true },
+    ]
+    render(<ScmDiff {...props({ order, openScmDetails })} />)
+    expect(screen.getByText('1/2')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: zh['action.nextFile'] }))
+    expect(openScmDetails).toHaveBeenCalledWith(order[1])
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: zh['action.previousFile'] }).disabled).toBe(true)
+  })
+
   it('renders the file diff', async () => {
     render(<ScmDiff {...props()} />)
     expect(await screen.findByText('a.ts')).toBeDefined()
@@ -98,7 +118,7 @@ describe('ScmDiff', () => {
   })
 
   it('surfaces a non-Error diff rejection', async () => {
-    render(<ScmDiff {...props({ diff: vi.fn(() => Promise.reject('nope')) })} />)
+    render(<ScmDiff {...props({ diff: vi.fn(() => rejectNonError()) as never })} />)
     expect(await screen.findByText(zh['error.failed'])).toBeDefined()
   })
 

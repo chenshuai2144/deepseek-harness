@@ -1,6 +1,10 @@
 - button "Back to workspace"
 - text: File
 - button "Close workspace"
+- img
+- textbox "Search workspace filenames":
+  - /placeholder: Quick open file
+- text: Ctrl P
 - tree "File":
-  - treeitem:
+  - treeitem "README.md":
     - button "README.md"

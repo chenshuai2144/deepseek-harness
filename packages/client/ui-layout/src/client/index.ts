@@ -25,8 +25,8 @@ import { en, NS, zh, type LayoutKey } from './locales.ts'
 // OwnerShare contracts below are the render-side halves registrants compose
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
-export type { ILayout } from './service.ts'
-export type { DetailsView, FileSelection, ScmSelection, SidebarView } from './stores.ts'
+export type { AppCommand, ILayout } from './service.ts'
+export type { DetailsView, FileSelection, GlobalOverlayView, ScmSelection, SidebarView } from './stores.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -37,7 +37,7 @@ declare module '@deepseek-ai/cordis' {
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Workspace-home chrome and live tiles. */
+    /** Task-dashboard and workspace-navigation copy. */
     layout: LayoutKey
   }
   interface SlotMap {
@@ -53,9 +53,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar.agent': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
-     * Right-column workspace home. OCCUPIED by this package's WorkspaceHome.
-     * Live tiles open implemented occupants; Terminal stays off the
-     * home until it has a real view.
+     * Right-column task dashboard. OCCUPIED by this package's WorkspaceHome.
+     * It reads existing Session projections and opens the implemented
+     * workspace occupants; Terminal stays absent until it has a real view.
      */
     'details.home': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
     /**
@@ -67,7 +67,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * Workspace file tree in the right column. OCCUPIED by ui-file. Opened
      * from the workspace home File tile.
      */
-    'details.files': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    'details.files': { kind: 'single'; scope: 'session'; owner: FileListOwnerProps }
     /**
      * Read-only workspace file preview. OCCUPIED by ui-file. The owner
      * passes the current file selection (or null while none is chosen).
@@ -137,13 +137,23 @@ export interface SidebarOwnerProps {
 /** Conversation owner share: business state and actions belong to the registrant. */
 export interface ConvOwnerProps {}
 
-/** Details owner share: empty — sessionId arrives as a framework-standard prop. */
+/** Details owner share: empty — Session hooks and id arrive as framework-standard props. */
 export interface DetailsOwnerProps {}
+
+/** File-list owner share: root viewing state retained across File-pane visits. */
+export interface FileListOwnerProps {
+  /** Most recently previewed workspace-relative paths. */
+  recentFiles: readonly string[]
+  /** Monotonic request that asks the File pane to focus quick open. */
+  quickFileRequest: number
+}
 
 /** SCM details owner share: the file the SCM panel selected. */
 export interface ScmDetailsOwnerProps {
   /** Selected path and staged/unstaged side, or null while none is chosen. */
   selection: ScmSelection | null
+  /** File order captured from the Changes list for previous/next navigation. */
+  order: readonly ScmSelection[]
 }
 
 /** File preview owner share: the workspace file the tree selected. */
@@ -159,7 +169,7 @@ export interface BrowserDetailsOwnerProps {
 }
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme', 'locale']
+export const inject = ['slots', 'theme', 'locale', 'sessions']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
@@ -190,11 +200,15 @@ export function apply(ctx: ClientContext): void {
       // Exclusive store: the factory itself — the framework instantiates per
       // entry and delivers useStore/actions to AppFrame as standard props.
       store: createLayoutStore,
+      locale: NS,
       // The hook's only side effect connects the root store to ctx.layout;
       // conversation business actions belong to their registrants.
       inject: (actions: PanelActions) => {
         layout.attachPanels(actions)
-        return {}
+        return {
+          commands: layout,
+          openSession: (sessionId: Parameters<typeof ctx.sessions.open>[0]) => { ctx.sessions.open(sessionId) },
+        }
       },
     }, AppFrame)
     const disposeHome = ctx.slots.register({
@@ -215,6 +229,34 @@ export function apply(ctx: ClientContext): void {
       void disposeService()
     }
   }, 'ui-layout: service + root registration')
+
+  const t = ctx.locale.bind(NS)
+  ctx.effect(function* () {
+    yield layout.registerCommand({
+      id: 'workbench.tasks', title: () => t('command.tasks'), keywords: () => [t('global.tasks')],
+      run: () => { layout.openTaskCenter() },
+    })
+    yield layout.registerCommand({
+      id: 'workbench.inbox', title: () => t('command.inbox'), keywords: () => [t('global.inbox')],
+      run: () => { layout.openInbox() },
+    })
+    yield layout.registerCommand({
+      id: 'workbench.changes', title: () => t('command.changes'), keywords: () => [t('tile.changes')],
+      run: () => { layout.openChanges() },
+    })
+    yield layout.registerCommand({
+      id: 'workbench.files', title: () => t('command.files'), keywords: () => [t('tile.files')],
+      run: () => { layout.openFiles() },
+    })
+    yield layout.registerCommand({
+      id: 'workbench.quickFile', title: () => t('command.quickFile'), shortcut: 'Ctrl+P',
+      keywords: () => [t('tile.files')], run: () => { layout.openQuickFile() },
+    })
+    yield layout.registerCommand({
+      id: 'workbench.browser', title: () => t('command.browser'), keywords: () => [t('tile.browser')],
+      run: () => { layout.openBrowser() },
+    })
+  }, 'ui-layout: built-in application commands')
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial
   // state through the getter once, then event-driven only; no React path.

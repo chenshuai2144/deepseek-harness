@@ -18,6 +18,20 @@ export type { DetailsView, FileSelection, ScmSelection, SidebarView } from './st
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
+/** One application command contributed to the global command palette. */
+export interface AppCommand {
+  /** Stable command id. */
+  id: string
+  /** Locale-following command label. */
+  title: () => string
+  /** Additional locale-following search terms. */
+  keywords?: () => readonly string[]
+  /** Optional shortcut label shown beside the command. */
+  shortcut?: string
+  /** Execute the command. */
+  run: () => void
+}
+
 /**
  * The outward layout face (`ctx.layout`): the panel transitions other
  * plugins may trigger — and exactly what a test fake must supply. The
@@ -56,11 +70,52 @@ export interface ILayout {
    * @param selection - workspace-relative path and staged/unstaged side.
    */
   openScmDetails(selection: ScmSelection): void
+  /**
+   * Open an SCM diff with its file navigation order.
+   * @param selection - selected staged or unstaged path.
+   * @param order - ordered paths captured from the Changes list.
+   */
+  openScmDetailsInOrder(selection: ScmSelection, order: readonly ScmSelection[]): void
+  /** Open the global task center. */
+  openTaskCenter(): void
+  /** Open the notification inbox. */
+  openInbox(): void
+  /** Open the application command palette. */
+  openCommandPalette(): void
+  /** Close the active global overlay. */
+  closeGlobalOverlay(): void
+  /** Open the File pane and focus quick open. */
+  openQuickFile(): void
+  /**
+   * Register one application command.
+   * @param command - command contribution with a stable id.
+   * @returns disposer that removes the command.
+   */
+  registerCommand(command: AppCommand): () => void
 }
 
 /** Cross-plugin panel-action face (ctx.layout). */
 export class LayoutController implements ILayout {
   #panels: PanelActions | undefined
+  #commands = new Map<string, AppCommand>()
+  #commandSnapshot: readonly AppCommand[] = []
+  #commandListeners = new Set<() => void>()
+
+  /**
+   * Read the current application-command contributions.
+   * @returns current command contribution snapshot.
+   */
+  readonly getCommands = (): readonly AppCommand[] => this.#commandSnapshot
+
+  /**
+   * Subscribe to command contribution changes.
+   * @param listener - callback invoked after the snapshot changes.
+   * @returns subscription disposer.
+   */
+  readonly subscribeCommands = (listener: () => void): (() => void) => {
+    this.#commandListeners.add(listener)
+    return () => { this.#commandListeners.delete(listener) }
+  }
 
   /**
    * Adopt the root entry's bound store actions. Called from the root
@@ -138,6 +193,59 @@ export class LayoutController implements ILayout {
    */
   openScmDetails(selection: ScmSelection): void {
     this.#require().openScmDetails(selection)
+  }
+
+  /**
+   * Open an SCM diff with its file navigation order.
+   * @param selection - selected staged or unstaged path.
+   * @param order - ordered paths captured from the Changes list.
+   */
+  openScmDetailsInOrder(selection: ScmSelection, order: readonly ScmSelection[]): void {
+    this.#require().openScmDetailsInOrder(selection, [...order])
+  }
+
+  /** Open the global task center. */
+  openTaskCenter(): void { this.#require().openTaskCenter() }
+
+  /** Open the notification inbox. */
+  openInbox(): void { this.#require().openInbox() }
+
+  /** Open the application command palette. */
+  openCommandPalette(): void { this.#require().openCommandPalette() }
+
+  /** Close the active global overlay. */
+  closeGlobalOverlay(): void { this.#require().closeGlobalOverlay() }
+
+  /** Open the File pane and focus quick open. */
+  openQuickFile(): void { this.#require().openQuickFile() }
+
+  /**
+   * Register one application command.
+   * @param command - command contribution with a stable id.
+   * @returns disposer that removes the command.
+   */
+  registerCommand(command: AppCommand): () => void {
+    if (this.#commands.has(command.id)) throw new Error(`layout: duplicate application command "${command.id}"`)
+    this.#commands.set(command.id, command)
+    this.#publishCommands()
+    let active = true
+    return () => {
+      if (!active) return
+      active = false
+      this.#commands.delete(command.id)
+      this.#publishCommands()
+    }
+  }
+
+  #publishCommands(): void {
+    this.#commandSnapshot = [...this.#commands.values()]
+    for (const listener of [...this.#commandListeners]) {
+      try {
+        listener()
+      } catch (error) {
+        console.error('[ui-layout] command listener threw:', error)
+      }
+    }
   }
 
   #require(): PanelActions {

@@ -14,6 +14,11 @@ afterEach(() => {
 const SESSION = 'session' as SessionId
 const t: FilePreviewProps['t'] = makeTranslate(zh)
 
+function rejectNonError<T>(): Promise<T> {
+  // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Exercises the unknown rejection fallback.
+  return new Promise((_resolve, reject) => { reject('nope') })
+}
+
 function ok<T>(value: T): Promise<RpcResponse<T>> {
   return Promise.resolve({ rpcId: 'rpc' as RpcResponse<T>['rpcId'], result: { ok: true, value } })
 }
@@ -62,7 +67,7 @@ describe('FilePreview', () => {
     const showHome = vi.fn()
     const closeDetails = vi.fn()
     render(<FilePreview {...props({ showFiles, showHome, closeDetails })} />)
-    await waitFor(() => { expect(screen.getByText('src/a.ts')).toBeTruthy() })
+    await waitFor(() => { expect(screen.getByTitle('src/a.ts')).toBeTruthy() })
     expect(screen.getByRole('code').textContent).toBe('export const x = 1')
     fireEvent.click(screen.getByRole('button', { name: zh['action.backToFiles'] }))
     expect(showFiles).toHaveBeenCalledOnce()
@@ -132,7 +137,7 @@ describe('FilePreview', () => {
 
   it('surfaces a non-Error thrown read', async () => {
     render(<FilePreview {...props({
-      readText: vi.fn(() => Promise.reject('nope')),
+      readText: vi.fn(() => rejectNonError()) as never,
     })} />)
     await waitFor(() => { expect(screen.getByText(zh['error.failed'])).toBeTruthy() })
   })

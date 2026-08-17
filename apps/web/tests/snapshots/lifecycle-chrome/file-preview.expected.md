@@ -2,6 +2,8 @@
 - button "Back to files"
 - button "Close workspace"
 - text: README.md
+- button "Copy path":
+  - img
 - text: md
 - button "Copy"
 - code: "# hello"

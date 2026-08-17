@@ -48,7 +48,7 @@ export async function dispatchIpcFetch(
         headers: responseHeaders,
         streaming: true,
       },
-      body: response.body ?? undefined,
+      body: response.body,
     }
   }
   return {

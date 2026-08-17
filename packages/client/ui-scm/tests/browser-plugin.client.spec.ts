@@ -14,7 +14,16 @@ import { apply as applyNode } from '../src/index.ts'
 import * as ScmInvariant from '../src/invariant.ts'
 import { en, NS, zh } from '../src/client/locales.ts'
 
-async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugin']> }> {
+async function bench(): Promise<{
+  ctx: Context
+  fiber: ReturnType<Context['plugin']>
+  layout: {
+    openScmDetails: ReturnType<typeof vi.fn>
+    openScmDetailsInOrder: ReturnType<typeof vi.fn>
+    openWorkspaceHome: ReturnType<typeof vi.fn>
+    openChanges: ReturnType<typeof vi.fn>
+  }
+}> {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.slots.register({
@@ -36,13 +45,19 @@ async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugi
     },
     isLoopback: true,
   } as never)
-  ctx.provide('layout', { openScmDetails: vi.fn(), openWorkspaceHome: vi.fn(), openChanges: vi.fn() })
+  const layout = {
+    openScmDetails: vi.fn(),
+    openScmDetailsInOrder: vi.fn(),
+    openWorkspaceHome: vi.fn(),
+    openChanges: vi.fn(),
+  }
+  ctx.provide('layout', layout)
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
   await ctx.plugin({ inject: localeInject, apply: applyLocale }).await()
   const fiber = ctx.plugin({ inject: [...inject], apply, Config }, { refreshIntervalMs: 2_000 })
   await fiber.await()
-  return { ctx, fiber }
+  return { ctx, fiber, layout }
 }
 
 describe('ui-scm browser half', () => {
@@ -74,18 +89,19 @@ describe('ui-scm browser half', () => {
   })
 
   it('binds git RPC and layout writes through the slot inject faces', async () => {
-    const { ctx } = await bench()
+    const { ctx, layout } = await bench()
     const panel = ctx.slots.entries('details.changes')[0]
     const details = ctx.slots.entries('details.scm')[0]
     const panelFace = panel?.inject?.() as {
-      openScmDetails: (selection: { path: string; staged: boolean }) => void
+      openScmDetails: (selection: { path: string; staged: boolean }, order: readonly { path: string; staged: boolean }[]) => void
       refreshIntervalMs: number
     }
     const detailsFace = details?.inject?.() as { diff: unknown }
     expect(panelFace.refreshIntervalMs).toBe(2_000)
     expect(typeof detailsFace.diff).toBe('function')
-    panelFace.openScmDetails({ path: 'a.ts', staged: false })
-    expect(ctx.layout.openScmDetails).toHaveBeenCalledWith({ path: 'a.ts', staged: false })
+    const selection = { path: 'a.ts', staged: false }
+    panelFace.openScmDetails(selection, [selection])
+    expect(layout.openScmDetailsInOrder.mock.calls).toEqual([[selection, [selection]]])
   })
 })
 

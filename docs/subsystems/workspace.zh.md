@@ -2,7 +2,7 @@
 
 [English](workspace.md) | 中文
 
-工作区（workspace）是用户工作目录的持久记录：一个建立在规范路径之上的稳定 id、一个显示标题，以及归属于它的会话的有序账本。该子系统是单个包（package）（[dsh-workspace](../../packages/workspace/workspace)，`ctx.workspaceRegistry`）——一项宿主侧可选能力，不属于 agent loop（智能体循环）主干，并且对模型不可见（没有工具、没有提示词文本、没有会话事件）。它通过[存储领域数据形式](storage.md)存储自己的记录，并对照 [`SessionHeader.cwd`](persistence.md#sessionheader--metadata-beside-the-log) 校验会话成员资格，因此 `storageDomain` 与 `sessionPersistence` 是必需的启动依赖：持久化这一依赖不可用时，插件保持 pending，而不是把这种不可用误当作空历史。设计记录：[领域 KV 存储 Agent Note（agent 决策记录）](../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)；引导与 GUI 顺序：[Workspace UI 产品流程 Agent Note](../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md)。
+工作区（workspace）是用户工作目录的持久记录：一个建立在规范路径之上的稳定 id、一个显示标题，以及归属于它的会话的有序账本。持久注册表是单个包（package）（[dsh-workspace](../../packages/workspace/workspace)，`ctx.workspaceRegistry`）——一项宿主侧可选能力，不属于 agent loop（智能体循环）主干，并且对模型不可见（没有工具、没有提示词文本、没有会话事件）。它通过[存储领域数据形式](storage.md)存储自己的记录，并对照 [`SessionHeader.cwd`](persistence.md#sessionheader--metadata-beside-the-log) 校验会话成员资格，因此 `storageDomain` 与 `sessionPersistence` 是必需的启动依赖：持久化这一依赖不可用时，插件保持 pending，而不是把这种不可用误当作空历史。设计记录：[领域 KV 存储 Agent Note（agent 决策记录）](../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)；引导与 GUI 顺序：[Workspace UI 产品流程 Agent Note](../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md)。
 
 源码：[`packages/workspace/workspace/src/types.ts`](../../packages/workspace/workspace/src/types.ts)
 
@@ -125,6 +125,8 @@ interface Workspace {
 
 [dsh-host-apiproxy](../../packages/host/apiproxy) 是产品消费方：它经 `ctx.workspaceRegistry` 向 GUI 客户端提供工作区的 CRUD，并执行上文「先建会话再 attach」的流程。[dsh-agent-instructions](../../packages/context/agent-instructions) 尽管名字如此，却**不是**消费方：它在 agent 自己的 cwd 下发现 AGENTS.md 风格的指令文件，从不触碰 `ctx.workspaceRegistry`——两者共用的这个词指的是用户的工作目录，而非本注册表的实体。
 
+可选的 [`ctx.git`](../../packages/git/git) 配套能力通过特权宿主 RPC，针对会话工作区服务于面向人的 SCM 面板。它不会修改工作区记录，也不会新增面向模型的 Git 工具；模型继续使用 `bash`。
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -148,6 +150,69 @@ abstract capability(): DirectoryPickerCapability
 ```
 
 Source: [`packages/host/directory-picker/src/index.ts:131`](../../packages/host/directory-picker/src/index.ts)
+
+<a id="ctxgit--git-abstract-seam"></a>
+
+### `ctx.git` — `Git` (abstract seam)
+
+Abstract workspace Git service. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.git` (one implementation per context; loading a second throws, cordis' standard duplicate-service behavior).
+
+```ts cordis-catalog
+/**
+ * Read staged and unstaged changes at a workspace root.
+ * @param cwd - absolute workspace root.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns the status lists and current branch.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract status(cwd: string, signal?: AbortSignal): Promise<GitStatus>
+
+/**
+ * Read both sides of one path for a read-only diff.
+ * @param cwd - absolute workspace root.
+ * @param path - workspace-relative path.
+ * @param staged - true reads index vs HEAD; false reads worktree vs index.
+ * @param signal - caller lifetime; abort rejects with the abort reason.
+ * @returns old and new text for {@link GitFileDiff}.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract diff(cwd: string, path: string, staged: boolean, signal?: AbortSignal): Promise<GitFileDiff>
+
+/**
+ * Stage paths into the index.
+ * @param cwd - absolute workspace root.
+ * @param paths - workspace-relative paths; empty is a no-op.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract stage(cwd: string, paths: readonly string[]): Promise<void>
+
+/**
+ * Unstage paths from the index (keep the worktree).
+ * @param cwd - absolute workspace root.
+ * @param paths - workspace-relative paths; empty is a no-op.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract unstage(cwd: string, paths: readonly string[]): Promise<void>
+
+/**
+ * Create a commit from the current index.
+ * @param cwd - absolute workspace root.
+ * @param message - non-blank commit message.
+ * @returns the new commit object name.
+ * @throws {GitError} `empty-message` / `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract commit(cwd: string, message: string): Promise<GitCommitResult>
+
+/**
+ * Read the current branch name.
+ * @param cwd - absolute workspace root.
+ * @returns the branch name, or `HEAD` when detached.
+ * @throws {GitError} `not-a-repository` / `git-not-found` / `git-failed`.
+ */
+abstract branch(cwd: string): Promise<GitBranchInfo>
+```
+
+Source: [`packages/git/git/src/index.ts:86`](../../packages/git/git/src/index.ts)
 
 <a id="ctxworkspaceregistry--workspaceregistry"></a>
 

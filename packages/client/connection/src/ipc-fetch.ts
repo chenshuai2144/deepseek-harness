@@ -50,12 +50,22 @@ export interface IpcFetchPort {
   abort(requestId: string): void
 }
 
+/** Renderer request for one operating-system notification. */
+export interface DesktopNotification {
+  /** Notification heading. */
+  title: string
+  /** Short status description. */
+  body: string
+}
+
 /** Preload bridge installed as `window.__DSH_DESKTOP__`. */
 export interface DshDesktopBridge extends IpcFetchPort {
   /** Host-composed `window.__DSH_BOOT__` graph. */
   bootGraph(): Promise<unknown>
   /** Client-bundle source for one graph URL (`/plugins/<id>/client.js`). */
   readBundle(url: string): Promise<string>
+  /** Ask the desktop shell to show one native notification. */
+  notify(message: DesktopNotification): Promise<boolean>
 }
 
 /**

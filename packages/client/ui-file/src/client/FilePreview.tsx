@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FsFileText, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import { CodeBlock } from '@deepseek-ai/dsh-client-ui-primitives'
+import { CodeBlock, IconCopyOutline16, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { fsFailureCopy } from './fs-error.ts'
 import { languageOf } from './language.ts'
@@ -35,8 +35,10 @@ export function FilePreview({
   const [file, setFile] = useState<FsFileText | undefined>(undefined)
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
+  const [copiedPath, setCopiedPath] = useState(false)
 
   useEffect(() => {
+    setCopiedPath(false)
     if (cwd === undefined || selection === null) {
       setFile(undefined)
       setFailure(undefined)
@@ -96,7 +98,29 @@ export function FilePreview({
               ? <p className={css.empty}>{t('empty.preview')}</p>
               : (
                 <div className={css.body}>
-                  <div className={css.path} title={file.path}>{file.path}</div>
+                  <div className={css.pathBar}>
+                    <div className={css.breadcrumb} title={file.path}>
+                      {file.path.split('/').map((segment, index, segments) => (
+                        <span key={`${segment}:${index}`}>
+                          {segment}{index < segments.length - 1 ? <i>/</i> : null}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className={css.copyPath}
+                      aria-label={copiedPath ? t('copied') : t('copyPath')}
+                      onClick={() => {
+                        void writeClipboard(file.path).then((copied) => {
+                          if (!copied) return
+                          setCopiedPath(true)
+                          window.setTimeout(() => { setCopiedPath(false) }, 1000)
+                        })
+                      }}
+                    >
+                      <IconCopyOutline16 size={14} />
+                    </button>
+                  </div>
                   {file.truncated ? <p className={css.truncated}>{t('preview.truncated')}</p> : null}
                   <CodeBlock
                     code={file.text}

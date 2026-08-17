@@ -1,3 +1,3 @@
 - button "Back to workspace"
 - button "Close workspace"
-- paragraph: Not a git repository
+- paragraph: Git operation failed

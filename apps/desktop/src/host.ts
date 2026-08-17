@@ -6,8 +6,8 @@
 import { readFile } from 'node:fs/promises'
 import { loadLayeredEnv } from '@deepseek-ai/dsh-app-boot'
 import { dispatchIpcFetch } from '@deepseek-ai/dsh-client-connection'
-import type { HostConnectionHandle } from '@deepseek-ai/dsh-client-connection'
-import type { ClientModuleRegistry } from '@deepseek-ai/dsh-client-modules'
+import type {} from '@deepseek-ai/dsh-client-connection'
+import type {} from '@deepseek-ai/dsh-client-modules'
 import { runProfile } from '../../cli/src/profile-boot.ts'
 import type { HostToMain, MainToHost } from './protocol.ts'
 
@@ -25,8 +25,8 @@ const { ctx, shutdown } = await runProfile({
   args,
 })
 
-const connection = ctx.get('connection') as HostConnectionHandle | undefined
-const modules = ctx.get('clientModules') as ClientModuleRegistry | undefined
+const connection = ctx.get('connection')
+const modules = ctx.get('clientModules')
 if (connection === undefined) {
   throw new Error('desktop host: ctx.connection is missing — the desktop profile did not mount connection')
 }
@@ -62,7 +62,6 @@ const handle = async (message: MainToHost): Promise<void> => {
     inflight.get(message.requestId)?.abort()
     return
   }
-  if (message.type !== 'fetch') return
   const abort = new AbortController()
   inflight.set(message.message.requestId, abort)
   try {

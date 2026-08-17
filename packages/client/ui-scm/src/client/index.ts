@@ -50,8 +50,12 @@ export function apply(ctx: ClientContext, config: Config): void {
     stage: connection.api.git.stage.bind(connection.api.git),
     unstage: connection.api.git.unstage.bind(connection.api.git),
     commit: connection.api.git.commit.bind(connection.api.git),
-    openScmDetails: (selection: Parameters<typeof ctx.layout.openScmDetails>[0]) => {
-      ctx.layout.openScmDetails(selection)
+    diff: connection.api.git.diff.bind(connection.api.git),
+    openScmDetails: (
+      selection: Parameters<typeof ctx.layout.openScmDetailsInOrder>[0],
+      order: Parameters<typeof ctx.layout.openScmDetailsInOrder>[1],
+    ) => {
+      ctx.layout.openScmDetailsInOrder(selection, order)
     },
     showHome: () => { ctx.layout.openWorkspaceHome() },
     closeDetails: () => { ctx.layout.closeDetails() },
@@ -59,6 +63,9 @@ export function apply(ctx: ClientContext, config: Config): void {
   })
   const diffInject = () => ({
     diff: connection.api.git.diff.bind(connection.api.git),
+    openScmDetails: (selection: Parameters<typeof ctx.layout.openScmDetails>[0]) => {
+      ctx.layout.openScmDetails(selection)
+    },
     showChanges: () => { ctx.layout.openChanges() },
     showHome: () => { ctx.layout.openWorkspaceHome() },
     closeDetails: () => { ctx.layout.closeDetails() },

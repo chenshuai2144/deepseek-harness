@@ -30,6 +30,12 @@
       "path": "../runtime"
     },
     {
+      "path": "../../goal/goal"
+    },
+    {
+      "path": "../../plan/plan-mode"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

@@ -34,6 +34,7 @@ function mountColumn(): { column: HTMLElement; quiet: () => boolean } {
       collapsed={false} width={300}
       useSessions={neverHook} useWorkspaces={neverHook}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
+      openTaskCenter={vi.fn()} openInbox={vi.fn()} openCommandPalette={vi.fn()}
       renderSlot={((_key: string, owner: SidebarSectionOwnerProps) =>
         <div data-testid="region" data-wide={owner.wide} />) as SidebarRootComponentProps['renderSlot']}
     />,

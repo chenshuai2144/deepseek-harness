@@ -30,6 +30,7 @@ async function bench() {
   // ui-theme's Appearance row binds a durable scope through these two.
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
+  ctx.provide('sessions', { open: vi.fn() } as never)
   await ctx.plugin({ inject: themeInject, apply: themeApply }).await()
   await slotsFiber.await()
   return { ctx, slots: ctx.get('slots') as SlotRegistry }
@@ -37,7 +38,7 @@ async function bench() {
 
 describe('ui-layout client apply', () => {
   it('declares its service dependencies', () => {
-    expect(inject).toEqual(['slots', 'theme', 'locale'])
+    expect(inject).toEqual(['slots', 'theme', 'locale', 'sessions'])
   })
 
   it('provides ctx.layout and registers AppFrame into root with the three child declarations', async () => {
@@ -69,10 +70,13 @@ describe('ui-layout client apply', () => {
       openDetails: vi.fn(), closeDetails: vi.fn(), openWorkspaceHome: vi.fn(), openChanges: vi.fn(),
       openFiles: vi.fn(), openFileDetails: vi.fn(),
       openBrowser: vi.fn(), openBrowserPage: vi.fn(),
-      setSidebarView: vi.fn(), openScmDetails: vi.fn(),
+      setSidebarView: vi.fn(), openScmDetails: vi.fn(), openScmDetailsInOrder: vi.fn(),
+      openTaskCenter: vi.fn(), openInbox: vi.fn(), openCommandPalette: vi.fn(),
+      closeGlobalOverlay: vi.fn(), openQuickFile: vi.fn(),
     }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never)
-    expect(injected).toEqual({})
+    expect(Reflect.get(injected, 'commands')).toBeInstanceOf(LayoutController)
+    expect(Reflect.get(injected, 'openSession')).toBeTypeOf('function')
     const layout = ctx.get('layout') as LayoutController
     layout.toggleSidebar()
     expect(actions.toggleSidebar).toHaveBeenCalledOnce()

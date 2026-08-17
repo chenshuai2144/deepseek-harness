@@ -113,7 +113,9 @@ describe('git.* RPC', () => {
   it('reports cancelled when status or diff is aborted', async () => {
     const hang = async (_cwd: string, signal?: AbortSignal): Promise<never> => {
       await new Promise<never>((_resolve, reject) => {
-        signal?.addEventListener('abort', () => { reject(signal.reason) }, { once: true })
+        signal?.addEventListener('abort', () => {
+          reject(signal.reason instanceof Error ? signal.reason : new Error('git request aborted'))
+        }, { once: true })
       })
       throw new Error('hang settled without abort')
     }

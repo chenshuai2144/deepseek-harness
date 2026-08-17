@@ -3,6 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/types",
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false,
     "types": ["node"],
     "lib": ["ES2024"]
   },
@@ -14,7 +16,7 @@
       "path": "../../packages/boot/app-boot"
     },
     {
-      "path": "../../packages/client/connection"
+      "path": "../../packages/client/connection/tsconfig.host.json"
     },
     {
       "path": "../../packages/client/modules"

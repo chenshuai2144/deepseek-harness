@@ -17,6 +17,7 @@ import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-web-react'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 // Type-only: pulls ctx.locale into this program.
 import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {
   SettingsOnboardingStep, SettingsRootInjected, SettingsSectionRow,
 } from './shell-contract.ts'
@@ -54,7 +55,7 @@ const NS = 'settings'
  * ui-settings' apply, whose activation order relative to this one is NOT
  * constrained; registrations depend on their slots through `slots.inject()`.
  */
-export const inject = ['slots', 'locale', 'connection']
+export const inject = ['slots', 'locale', 'connection', 'layout']
 
 /**
  * Register the `settings` dictionaries, the chrome content, and the General
@@ -72,6 +73,18 @@ export function apply(ctx: ClientContext): void {
   const documentController = connection.isLoopback
     ? new SettingsDocumentStore(connection.api)
     : undefined
+  let openRequest: { revision: number; section?: string } = { revision: 0 }
+  const openListeners = new Set<() => void>()
+  const requestOpen = (section?: string): void => {
+    openRequest = { revision: openRequest.revision + 1, ...(section === undefined ? {} : { section }) }
+    for (const listener of [...openListeners]) {
+      try {
+        listener()
+      } catch (error) {
+        console.error('[ui-settings-general] open-request listener threw:', error)
+      }
+    }
+  }
   const documentInjected = documentController === undefined
     ? undefined
     : (() => {
@@ -137,6 +150,13 @@ export function apply(ctx: ClientContext): void {
         },
         subscribe: listener => ctx.slots.subscribe('settings.onboarding', listener),
       },
+      openRequests: {
+        getSnapshot: () => openRequest,
+        subscribe: (listener) => {
+          openListeners.add(listener)
+          return () => { openListeners.delete(listener) }
+        },
+      },
     },
   })
   ctx.slots.inject('sidebar.settings', () => ctx.slots.register({
@@ -175,4 +195,18 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     children: { 'settings.general.item': { kind: 'list', scope: 'root' } },
   }, GeneralSection))
+  ctx.effect(function* () {
+    yield ctx.layout.registerCommand({
+      id: 'settings.open',
+      title: () => t('command.open'),
+      keywords: () => [t('trigger')],
+      run: () => { requestOpen() },
+    })
+    yield ctx.layout.registerCommand({
+      id: 'settings.plugins',
+      title: () => t('command.plugins'),
+      keywords: () => [t('command.pluginsKeyword')],
+      run: () => { requestOpen('plugins') },
+    })
+  }, 'ui-settings-general: application commands')
 }

@@ -36,6 +36,9 @@ export function apply(ctx: ClientContext): void {
     // (current Session Workspace, then recent Workspace).
     startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
     toggleSidebar: () => { ctx.layout.toggleSidebar() },
+    openTaskCenter: () => { ctx.layout.openTaskCenter() },
+    openInbox: () => { ctx.layout.openInbox() },
+    openCommandPalette: () => { ctx.layout.openCommandPalette() },
   })
   ctx.effect(
     () => ctx.slots.register({

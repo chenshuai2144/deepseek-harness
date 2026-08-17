@@ -54,6 +54,7 @@ function mount({
     useWorkspaces: unusedHook,
     wide,
     useOnboardingSteps: select => select(steps),
+    useOpenRequests: select => select({ revision: 0 }),
     useSections: (select) => {
       const [, force] = useState(0)
       useEffect(() => {

@@ -1026,7 +1026,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'The right details column, shown when the layout opens it. OCCUPIED by\nui-conversation\'s DetailsPanel, which declares the tool-details seat\ninside it — registering here replaces the column and takes that seat\nwith it. Absent an occupant the column renders nothing.\n\nNo owner props: the framework injects the session id and hooks for the\n`session` scope, and `ctx.layout` owns whether the column is open.',
     registerOptions: [],
     ownerProps: [
-      '/** Details owner share: empty — sessionId arrives as a framework-standard prop. */\nexport interface DetailsOwnerProps {}',
+      '/** Details owner share: empty — Session hooks and id arrive as framework-standard props. */\nexport interface DetailsOwnerProps {}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1088,7 +1088,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Source-control list in the right column. OCCUPIED by ui-scm. Opened\nfrom the workspace home Changes tile, not an IDE activity bar.',
     registerOptions: [],
     ownerProps: [
-      '/** Details owner share: empty — sessionId arrives as a framework-standard prop. */\nexport interface DetailsOwnerProps {}',
+      '/** Details owner share: empty — Session hooks and id arrive as framework-standard props. */\nexport interface DetailsOwnerProps {}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1152,7 +1152,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'Workspace file tree in the right column. OCCUPIED by ui-file. Opened\nfrom the workspace home File tile.',
     registerOptions: [],
     ownerProps: [
-      '/** Details owner share: empty — sessionId arrives as a framework-standard prop. */\nexport interface DetailsOwnerProps {}',
+      '/** File-list owner share: root viewing state retained across File-pane visits. */\nexport interface FileListOwnerProps {\n  /** Most recently previewed workspace-relative paths. */\n  recentFiles: readonly string[]\n  /** Monotonic request that asks the File pane to focus quick open. */\n  quickFileRequest: number\n}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1179,11 +1179,11 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'details.home',
     kind: 'single',
     scope: 'session',
-    summary: 'Right-column workspace home.',
-    doc: 'Right-column workspace home. OCCUPIED by this package\'s WorkspaceHome.\nLive tiles open implemented occupants; Terminal stays off the\nhome until it has a real view.',
+    summary: 'Right-column task dashboard.',
+    doc: 'Right-column task dashboard. OCCUPIED by this package\'s WorkspaceHome.\nIt reads existing Session projections and opens the implemented\nworkspace occupants; Terminal stays absent until it has a real view.',
     registerOptions: [],
     ownerProps: [
-      '/** Details owner share: empty — sessionId arrives as a framework-standard prop. */\nexport interface DetailsOwnerProps {}',
+      '/** Details owner share: empty — Session hooks and id arrive as framework-standard props. */\nexport interface DetailsOwnerProps {}',
     ],
     ownerPropsReferences: [],
     standardProps: [
@@ -1214,7 +1214,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     doc: 'SCM file-diff body in the details column. OCCUPIED by ui-scm. The owner\npasses the current SCM selection (or null while none is chosen).',
     registerOptions: [],
     ownerProps: [
-      '/** SCM details owner share: the file the SCM panel selected. */\nexport interface ScmDetailsOwnerProps {\n  /** Selected path and staged/unstaged side, or null while none is chosen. */\n  selection: ScmSelection | null\n}',
+      '/** SCM details owner share: the file the SCM panel selected. */\nexport interface ScmDetailsOwnerProps {\n  /** Selected path and staged/unstaged side, or null while none is chosen. */\n  selection: ScmSelection | null\n  /** File order captured from the Changes list for previous/next navigation. */\n  order: readonly ScmSelection[]\n}',
     ],
     ownerPropsReferences: [
       'ScmSelection',

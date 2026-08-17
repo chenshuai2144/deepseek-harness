@@ -642,6 +642,53 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'git',
+    summary: 'Abstract workspace Git service.',
+    description: 'Abstract workspace Git service. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.git` (one implementation per context; loading a second throws, cordis\' standard duplicate-service behavior).',
+    methods: [
+      {
+        signature: 'abstract status(cwd: string, signal?: AbortSignal): Promise<GitStatus>',
+        description: 'Read staged and unstaged changes at a workspace root.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }, { name: 'signal', description: 'caller lifetime; abort rejects with the abort reason.' }],
+        returns: 'the status lists and current branch.',
+        throws: ['{GitError} `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+      {
+        signature: 'abstract diff(cwd: string, path: string, staged: boolean, signal?: AbortSignal): Promise<GitFileDiff>',
+        description: 'Read both sides of one path for a read-only diff.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }, { name: 'path', description: 'workspace-relative path.' }, { name: 'staged', description: 'true reads index vs HEAD; false reads worktree vs index.' }, { name: 'signal', description: 'caller lifetime; abort rejects with the abort reason.' }],
+        returns: 'old and new text for {@link GitFileDiff}.',
+        throws: ['{GitError} `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+      {
+        signature: 'abstract stage(cwd: string, paths: readonly string[]): Promise<void>',
+        description: 'Stage paths into the index.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }, { name: 'paths', description: 'workspace-relative paths; empty is a no-op.' }],
+        throws: ['{GitError} `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+      {
+        signature: 'abstract unstage(cwd: string, paths: readonly string[]): Promise<void>',
+        description: 'Unstage paths from the index (keep the worktree).',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }, { name: 'paths', description: 'workspace-relative paths; empty is a no-op.' }],
+        throws: ['{GitError} `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+      {
+        signature: 'abstract commit(cwd: string, message: string): Promise<GitCommitResult>',
+        description: 'Create a commit from the current index.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }, { name: 'message', description: 'non-blank commit message.' }],
+        returns: 'the new commit object name.',
+        throws: ['{GitError} `empty-message` / `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+      {
+        signature: 'abstract branch(cwd: string): Promise<GitBranchInfo>',
+        description: 'Read the current branch name.',
+        parameters: [{ name: 'cwd', description: 'absolute workspace root.' }],
+        returns: 'the branch name, or `HEAD` when detached.',
+        throws: ['{GitError} `not-a-repository` / `git-not-found` / `git-failed`.'],
+      },
+    ],
+  },
+  {
     key: 'goals',
     summary: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',
     description: 'Goal service (`ctx.goals`) backed exclusively by the owning session log.',
@@ -3102,6 +3149,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GenericResultView {\n    card: \'generic\';\n    title?: string;\n    content?: ContentBlock[];\n}',
   },
   {
+    name: 'GitBranchInfo',
+    declaration: 'export interface GitBranchInfo {\n    name: string;\n}',
+  },
+  {
+    name: 'GitCommitResult',
+    declaration: 'export interface GitCommitResult {\n    commit: string;\n}',
+  },
+  {
     name: 'GoalActivation',
     declaration: 'export type GoalActivation = \'armed\' | \'disarmed\';',
   },
@@ -3635,7 +3690,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RpcErrorDetailsMap',
-    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'agent-preset-read-only\': {\n        agentPreset: string;\n        reason: string;\n    };\n    \'agent-preset-locked\': {\n        sessionId: SessionId;\n        agentPreset: string;\n    };\n    \'agent-preset-conflict\': {\n        sessionId: SessionId;\n        requestedPreset: string;\n        existingPreset?: string;\n    };\n    \'agent-preset-not-found\': {\n        agentPreset: string;\n      /* …truncated — full shape in source */',
+    declaration: 'export interface RpcErrorDetailsMap {\n    \'bad-request\': {\n        issues: ZodIssue[];\n    };\n    \'cancelled\': {};\n    \'session-not-found\': {\n        sessionId: SessionId;\n    };\n    \'model-unavailable\': {\n        provider: string;\n        model: string;\n    };\n    \'session-conflict\': {\n        sessionId: SessionId;\n        requestedCwd: string;\n        existingCwd?: string;\n    };\n    \'invalid-time-zone\': {\n        value: string;\n    };\n    \'workspace-attach-failed\': {\n        sessionId: SessionId;\n        workspaceId: string;\n    };\n    \'workspace-not-found\': {\n        workspaceId: string;\n    };\n    \'workspace-invalid-path\': {\n        path: string;\n    };\n    \'workspace-name-conflict\': {\n        name: string;\n    };\n    \'workspace-move-invalid\': {\n        workspaceId: string;\n        sessionId: SessionId;\n        beforeSessionId?: SessionId;\n    };\n    \'directory-unreadable\': {\n        path: string;\n    };\n    \'directory-exists\': {\n        path: string;\n    };\n    \'directory-create-failed\': {\n        path: string;\n    };\n    \'directory-picker-unavailable\': {\n        capability: string;\n    };\n    \'git-unavailable\': {};\n    \'git-not-a-repository\': {\n        cwd: string;\n    };\n    \'git-not-found\': {\n        cwd: string;\n    };\n    \'git-empty-message\': {\n        cwd: string;\n    };\n    \'git-failed\': {\n        cwd: string;\n    };\n    \'fs-unavailable\': {};\n    \'fs-failed\': {\n        cwd: string;\n    };\n    \'fs-not-found\': {\n        path: string;\n    };\n    \'fs-not-directory\':  /* …truncated — full shape in source */',
   },
   {
     name: 'RpcId',

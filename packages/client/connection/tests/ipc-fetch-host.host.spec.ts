@@ -122,7 +122,7 @@ describe('dispatchIpcFetch', () => {
         return inner.start(message)
       },
       pull: requestId => inner.pull(requestId),
-      abort: requestId => inner.abort(requestId),
+      abort: (requestId) => { inner.abort(requestId) },
     }
     const fetchImpl = createIpcFetch(port)
     const abort = new AbortController()

@@ -76,6 +76,12 @@ export type SidebarRootInjected = {
   startSession: (workspaceId?: WorkspaceId) => void
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
+  /** Open the frame-wide task center. */
+  openTaskCenter: () => void
+  /** Open the frame-wide notification inbox. */
+  openInbox: () => void
+  /** Open the application command palette. */
+  openCommandPalette: () => void
 }
 
 /**

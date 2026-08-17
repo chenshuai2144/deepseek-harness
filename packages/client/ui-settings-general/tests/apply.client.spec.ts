@@ -29,6 +29,7 @@ async function bench(isLoopback = true) {
   await ctx.plugin(SlotRegistry).await()
   const locale = new LocaleRuntime(ctx)
   ctx.provide('locale', locale)
+  ctx.provide('layout', { registerCommand: () => () => {} } as never)
   const settingsDescribe = vi.fn(() => Promise.resolve({
     rpcId: 'settings-general' as never,
     result: {
@@ -75,7 +76,7 @@ function generalEntry(slots: SlotRegistry) {
 
 describe('ui-settings-general apply', () => {
   it('declares the services it uses', () => {
-    expect(inject).toEqual(['slots', 'locale', 'connection'])
+    expect(inject).toEqual(['slots', 'locale', 'connection', 'layout'])
   })
 
   it('fills all five seats for declarations before or after apply', async () => {

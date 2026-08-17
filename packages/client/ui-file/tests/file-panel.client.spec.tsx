@@ -14,6 +14,11 @@ afterEach(() => {
 const SESSION = 'session' as SessionId
 const t: FilePanelProps['t'] = makeTranslate(zh)
 
+function rejectNonError<T>(): Promise<T> {
+  // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Exercises the unknown rejection fallback.
+  return new Promise((_resolve, reject) => { reject('nope') })
+}
+
 function ok<T>(value: T): Promise<RpcResponse<T>> {
   return Promise.resolve({ rpcId: 'rpc' as RpcResponse<T>['rpcId'], result: { ok: true, value } })
 }
@@ -59,6 +64,8 @@ function props(over: Partial<FilePanelProps> & { sessions?: SessionListState } =
     useSessions: <T,>(select: (snapshot: SessionListState) => T) => select(state),
     useWorkspaces: () => { throw new Error('unused') },
     listDir: over.listDir ?? vi.fn(() => ok({ path: '', entries: [] })),
+    recentFiles: over.recentFiles ?? [],
+    quickFileRequest: over.quickFileRequest ?? 0,
     openFileDetails: over.openFileDetails ?? vi.fn(),
     showHome: over.showHome ?? vi.fn(),
     closeDetails: over.closeDetails ?? vi.fn(),
@@ -134,7 +141,7 @@ describe('FilePanel', () => {
     })
     render(<FilePanel {...props({ listDir })} />)
     await waitFor(() => { expect(screen.getByText('src')).toBeTruthy() })
-    expect((screen.getByRole('button', { name: 'sock' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'sock' }).hasAttribute('disabled')).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: zh['action.expand'] }))
     await waitFor(() => { expect(screen.getByText(zh['error.denied'])).toBeTruthy() })
     fireEvent.click(screen.getByRole('button', { name: zh['action.collapse'] }))
@@ -150,7 +157,7 @@ describe('FilePanel', () => {
 
   it('surfaces a non-Error thrown root listing', async () => {
     render(<FilePanel {...props({
-      listDir: vi.fn(() => Promise.reject('nope')),
+      listDir: vi.fn(() => rejectNonError()) as never,
     })} />)
     await waitFor(() => { expect(screen.getByText(zh['error.failed'])).toBeTruthy() })
   })
@@ -177,13 +184,13 @@ describe('FilePanel', () => {
   it('surfaces a thrown child listing and a non-Error throw', async () => {
     const listDir = vi.fn((payload: { path?: string }) => {
       if (payload.path === 'src') return Promise.reject(new Error('child'))
-      if (payload.path === 'lib') return Promise.reject('nope')
+      if (payload.path === 'lib') return rejectNonError()
       return ok({
         path: '',
         entries: [entry('src', 'directory'), entry('lib', 'directory')],
       })
     })
-    render(<FilePanel {...props({ listDir })} />)
+    render(<FilePanel {...props({ listDir: listDir as never })} />)
     await waitFor(() => { expect(screen.getByText('src')).toBeTruthy() })
     fireEvent.click(screen.getByRole('button', { name: 'src' }))
     await waitFor(() => { expect(screen.getByText('child')).toBeTruthy() })

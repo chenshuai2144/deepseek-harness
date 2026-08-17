@@ -7,10 +7,11 @@ import { createRequire } from 'node:module'
 import { dirname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { fork, type ChildProcess } from 'node:child_process'
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, protocol } from 'electron'
 import { injectBootManifest, type WebBootGraph } from '@deepseek-ai/dsh-client-modules'
 import type { IpcFetchHead, IpcFetchPull, IpcFetchRequest } from '@deepseek-ai/dsh-client-connection'
 import { APP_USER_MODEL_ID, PRODUCT_NAME, resolveDesktopIcon, resolveDesktopRoot } from './brand.ts'
+import { normalizeDesktopNotification } from './notification.ts'
 import type { HostToMain, MainToHost } from './protocol.ts'
 
 app.setName(PRODUCT_NAME)
@@ -82,7 +83,7 @@ function attachHost(
       return new Promise((resolve, reject) => {
         waiters.add({
           type,
-          match: match as ((message: HostToMain) => boolean) | undefined,
+          ...match === undefined ? {} : { match: match as (message: HostToMain) => boolean },
           resolve: (message) => { resolve(message as never) },
           reject,
         })
@@ -113,8 +114,9 @@ function enqueueChunk(requestId: string, chunk?: Uint8Array, done = false, error
   if (done) state.done = true
   if (error !== undefined) state.error = error
   streams.set(requestId, state)
-  state.wait?.()
-  state.wait = undefined
+  const wake = state.wait
+  delete state.wait
+  wake?.()
 }
 
 async function startDesktop(): Promise<void> {
@@ -129,6 +131,7 @@ async function startDesktop(): Promise<void> {
   host.send({ type: 'boot-graph' })
   const graphMessage = await host.waitFor('boot-graph')
   const graph = graphMessage.graph as WebBootGraph
+  let desktopWindow: BrowserWindow | undefined
 
   ipcMain.handle('dsh:fetch-start', async (_event, message: IpcFetchRequest): Promise<IpcFetchHead> => {
     streams.set(message.requestId, { chunks: [], done: false })
@@ -151,7 +154,7 @@ async function startDesktop(): Promise<void> {
     host.send({ type: 'fetch-abort', requestId })
     enqueueChunk(requestId, undefined, true)
   })
-  ipcMain.handle('dsh:boot-graph', async () => graph)
+  ipcMain.handle('dsh:boot-graph', () => graph)
   ipcMain.handle('dsh:read-bundle', async (_event, url: string): Promise<string> => {
     const requestId = crypto.randomUUID()
     host.send({ type: 'read-bundle', requestId, url })
@@ -160,6 +163,18 @@ async function startDesktop(): Promise<void> {
       throw new Error(reply.error ?? `bundle missing for ${url}`)
     }
     return reply.source
+  })
+  ipcMain.handle('dsh:notify', (_event, input: unknown): boolean => {
+    const message = normalizeDesktopNotification(input)
+    if (message === undefined) throw new Error('desktop notification payload is invalid')
+    if (!Notification.isSupported()) return false
+    const notification = new Notification(message)
+    notification.on('click', () => {
+      desktopWindow?.show()
+      desktopWindow?.focus()
+    })
+    notification.show()
+    return true
   })
 
   protocol.handle('dsh-app', async (request) => {
@@ -206,8 +221,10 @@ async function startDesktop(): Promise<void> {
       nodeIntegration: false,
     },
   })
+  desktopWindow = window
   await window.loadURL('dsh-app://app/index.html')
   window.on('closed', () => {
+    desktopWindow = undefined
     host.send({ type: 'shutdown' })
   })
 }

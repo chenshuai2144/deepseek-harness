@@ -1,0 +1,21 @@
+- button "Close global panel"
+- dialog "Task center":
+  - banner:
+    - heading "Task center" [level=1]
+    - paragraph: See work in progress across every workspace.
+    - button "Close global panel":
+      - img
+  - navigation:
+    - button "Task center"
+    - button "Notification inbox"
+  - strong: "0"
+  - text: Running
+  - strong: "0"
+  - text: Waiting for me
+  - strong: "1"
+  - text: Completed
+  - strong: "0"
+  - text: Failed
+  - button "Reply with the single word workspace Completed":
+    - strong: Reply with the single word
+    - text: workspace Completed

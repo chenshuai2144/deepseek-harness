@@ -33,6 +33,7 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
       collapsed={current.collapsed} width={current.width}
       useSessions={neverHook} useWorkspaces={neverHook}
       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
+      openTaskCenter={vi.fn()} openInbox={vi.fn()} openCommandPalette={vi.fn()}
       renderSlot={((
         key: string,
         owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,

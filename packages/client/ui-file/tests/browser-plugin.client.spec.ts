@@ -14,7 +14,16 @@ import { apply as applyNode } from '../src/index.ts'
 import * as FileInvariant from '../src/invariant.ts'
 import { en, NS, zh } from '../src/client/locales.ts'
 
-async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugin']> }> {
+async function bench(): Promise<{
+  ctx: Context
+  fiber: ReturnType<Context['plugin']>
+  layout: {
+    openFileDetails: ReturnType<typeof vi.fn>
+    openWorkspaceHome: ReturnType<typeof vi.fn>
+    openFiles: ReturnType<typeof vi.fn>
+    closeDetails: ReturnType<typeof vi.fn>
+  }
+}> {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.slots.register({
@@ -33,15 +42,16 @@ async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugi
     },
     isLoopback: true,
   } as never)
-  ctx.provide('layout', {
+  const layout = {
     openFileDetails: vi.fn(), openWorkspaceHome: vi.fn(), openFiles: vi.fn(), closeDetails: vi.fn(),
-  })
+  }
+  ctx.provide('layout', layout)
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
   await ctx.plugin({ inject: localeInject, apply: applyLocale }).await()
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  return { ctx, fiber }
+  return { ctx, fiber, layout }
 }
 
 describe('ui-file browser half', () => {
@@ -73,7 +83,7 @@ describe('ui-file browser half', () => {
   })
 
   it('binds fs RPC and layout writes through the slot inject faces', async () => {
-    const { ctx } = await bench()
+    const { ctx, layout } = await bench()
     const panel = ctx.slots.entries('details.files')[0]
     const preview = ctx.slots.entries('details.file')[0]
     const panelFace = panel?.inject?.() as {
@@ -96,10 +106,10 @@ describe('ui-file browser half', () => {
     previewFace.showFiles()
     previewFace.showHome()
     previewFace.closeDetails()
-    expect(ctx.layout.openFileDetails).toHaveBeenCalledWith({ path: 'src/a.ts' })
-    expect(ctx.layout.openWorkspaceHome).toHaveBeenCalledTimes(2)
-    expect(ctx.layout.openFiles).toHaveBeenCalledTimes(1)
-    expect(ctx.layout.closeDetails).toHaveBeenCalledTimes(2)
+    expect(layout.openFileDetails.mock.calls).toEqual([[{ path: 'src/a.ts' }]])
+    expect(layout.openWorkspaceHome.mock.calls).toHaveLength(2)
+    expect(layout.openFiles.mock.calls).toHaveLength(1)
+    expect(layout.closeDetails.mock.calls).toHaveLength(2)
   })
 
 })

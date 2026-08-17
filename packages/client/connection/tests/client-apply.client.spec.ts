@@ -73,6 +73,7 @@ describe('connection client apply', () => {
       abort: () => undefined,
       bootGraph: async () => ({}),
       readBundle: async () => '',
+      notify: async () => true,
     }
     ;(globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__ = bridge
     try {
@@ -90,6 +91,7 @@ describe('connection client apply', () => {
       abort: () => undefined,
       bootGraph: async () => ({}),
       readBundle: async () => '',
+      notify: async () => true,
     }
     ;(globalThis as { __DSH_DESKTOP__?: DshDesktopBridge }).__DSH_DESKTOP__ = bridge
     try {

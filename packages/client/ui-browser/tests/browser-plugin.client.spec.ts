@@ -14,7 +14,11 @@ import { apply as applyNode } from '../src/index.ts'
 import * as BrowserInvariant from '../src/invariant.ts'
 import { en, NS, zh } from '../src/client/locales.ts'
 
-async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugin']> }> {
+async function bench(): Promise<{
+  ctx: Context
+  fiber: ReturnType<Context['plugin']>
+  layout: { openBrowserPage: ReturnType<typeof vi.fn>; openWorkspaceHome: ReturnType<typeof vi.fn>; closeDetails: ReturnType<typeof vi.fn> }
+}> {
   const ctx = new Context()
   await ctx.plugin(SlotRegistry).await()
   ctx.slots.register({
@@ -24,15 +28,16 @@ async function bench(): Promise<{ ctx: Context; fiber: ReturnType<Context['plugi
     },
   } as never, () => null)
   ctx.provide('connection', { api: {}, isLoopback: true } as never)
-  ctx.provide('layout', {
+  const layout = {
     openBrowserPage: vi.fn(), openWorkspaceHome: vi.fn(), closeDetails: vi.fn(),
-  })
+  }
+  ctx.provide('layout', layout)
   ctx.provide('remote', { $on: () => () => {} } as never)
   ctx.provide('settingsScope', { bind: () => stubSettingsScope().scope } as never)
   await ctx.plugin({ inject: localeInject, apply: applyLocale }).await()
   const fiber = ctx.plugin({ inject: [...inject], apply })
   await fiber.await()
-  return { ctx, fiber }
+  return { ctx, fiber, layout }
 }
 
 describe('ui-browser browser half', () => {
@@ -62,7 +67,7 @@ describe('ui-browser browser half', () => {
   })
 
   it('binds layout writes through the slot inject face', async () => {
-    const { ctx } = await bench()
+    const { ctx, layout } = await bench()
     const entry = ctx.slots.entries('details.browser')[0]
     const face = entry?.inject?.() as {
       openPage: (href: string) => void
@@ -73,9 +78,9 @@ describe('ui-browser browser half', () => {
     face.openPage('https://example.com/')
     face.showHome()
     face.closeDetails()
-    expect(ctx.layout.openBrowserPage).toHaveBeenCalledWith('https://example.com/')
-    expect(ctx.layout.openWorkspaceHome).toHaveBeenCalledTimes(1)
-    expect(ctx.layout.closeDetails).toHaveBeenCalledTimes(1)
+    expect(layout.openBrowserPage.mock.calls).toEqual([['https://example.com/']])
+    expect(layout.openWorkspaceHome.mock.calls).toHaveLength(1)
+    expect(layout.closeDetails.mock.calls).toHaveLength(1)
   })
 })
 

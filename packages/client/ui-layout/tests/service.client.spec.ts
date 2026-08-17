@@ -24,6 +24,12 @@ function fakePanels(): PanelActions {
     openBrowserPage: vi.fn(),
     setSidebarView: vi.fn(),
     openScmDetails: vi.fn(),
+    openScmDetailsInOrder: vi.fn(),
+    openTaskCenter: vi.fn(),
+    openInbox: vi.fn(),
+    openCommandPalette: vi.fn(),
+    closeGlobalOverlay: vi.fn(),
+    openQuickFile: vi.fn(),
   }
 }
 
@@ -44,6 +50,12 @@ describe('LayoutController', () => {
     service.openBrowserPage('https://example.com/')
     service.setSidebarView('scm')
     service.openScmDetails({ path: 'a.ts', staged: true })
+    service.openScmDetailsInOrder({ path: 'b.ts', staged: false }, [{ path: 'b.ts', staged: false }])
+    service.openTaskCenter()
+    service.openInbox()
+    service.openCommandPalette()
+    service.closeGlobalOverlay()
+    service.openQuickFile()
 
     expect(panels.toggleSidebar).toHaveBeenCalledTimes(1)
     expect(panels.openDetails).toHaveBeenCalledTimes(1)
@@ -56,6 +68,15 @@ describe('LayoutController', () => {
     expect(panels.openBrowserPage).toHaveBeenCalledWith('https://example.com/')
     expect(panels.setSidebarView).toHaveBeenCalledWith('scm')
     expect(panels.openScmDetails).toHaveBeenCalledWith({ path: 'a.ts', staged: true })
+    expect(panels.openScmDetailsInOrder).toHaveBeenCalledWith(
+      { path: 'b.ts', staged: false },
+      [{ path: 'b.ts', staged: false }],
+    )
+    expect(panels.openTaskCenter).toHaveBeenCalledOnce()
+    expect(panels.openInbox).toHaveBeenCalledOnce()
+    expect(panels.openCommandPalette).toHaveBeenCalledOnce()
+    expect(panels.closeGlobalOverlay).toHaveBeenCalledOnce()
+    expect(panels.openQuickFile).toHaveBeenCalledOnce()
     expect(panels.setSidebar).not.toHaveBeenCalled()
     expect(panels.setDetails).not.toHaveBeenCalled()
   })
@@ -78,5 +99,23 @@ describe('LayoutController', () => {
 
     expect(stale.toggleSidebar).not.toHaveBeenCalled()
     expect(fresh.toggleSidebar).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishes command registration and removal with duplicate-id protection', () => {
+    const service = new LayoutController()
+    const listener = vi.fn()
+    const offListener = service.subscribeCommands(listener)
+    const command = { id: 'test.open', title: () => 'Open', run: vi.fn() }
+    const dispose = service.registerCommand(command)
+
+    expect(service.getCommands()).toEqual([command])
+    expect(listener).toHaveBeenCalledOnce()
+    expect(() => { service.registerCommand(command) }).toThrow(/duplicate application command/)
+
+    dispose()
+    dispose()
+    expect(service.getCommands()).toEqual([])
+    expect(listener).toHaveBeenCalledTimes(2)
+    offListener()
   })
 })

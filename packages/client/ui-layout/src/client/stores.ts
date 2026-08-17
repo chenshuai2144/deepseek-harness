@@ -15,11 +15,16 @@ import {
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from './columns.ts'
 
+const RECENT_FILE_LIMIT = 8
+
 /** Sidebar occupant. The frame is an Agent workbench, not an IDE activity bar. */
 export type SidebarView = 'agent' | 'scm'
 
 /** Which details occupant the frame renders while the panel is open. */
 export type DetailsView = 'home' | 'changes' | 'files' | 'file' | 'browser' | 'conversation' | 'scm'
+
+/** Frame-wide workbench overlays. */
+export type GlobalOverlayView = 'tasks' | 'inbox' | 'commands' | null
 
 /** SCM file the details column should show; viewing state, not a session event. */
 export interface ScmSelection {
@@ -54,6 +59,10 @@ export type LayoutState = {
   scmSelection: ScmSelection | null
   fileSelection: FileSelection | null
   browserHref: string | null
+  globalOverlay: GlobalOverlayView
+  recentFiles: string[]
+  quickFileRequest: number
+  scmOrder: ScmSelection[]
 }
 
 /**
@@ -75,6 +84,12 @@ type LayoutActions = {
   openBrowserPage: (draft: LayoutState, href: string) => void
   setSidebarView: (draft: LayoutState, view: SidebarView) => void
   openScmDetails: (draft: LayoutState, selection: ScmSelection) => void
+  openScmDetailsInOrder: (draft: LayoutState, selection: ScmSelection, order: ScmSelection[]) => void
+  openTaskCenter: (draft: LayoutState) => void
+  openInbox: (draft: LayoutState) => void
+  openCommandPalette: (draft: LayoutState) => void
+  closeGlobalOverlay: (draft: LayoutState) => void
+  openQuickFile: (draft: LayoutState) => void
 }
 
 /**
@@ -99,6 +114,10 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       scmSelection: null,
       fileSelection: null,
       browserHref: null,
+      globalOverlay: null,
+      recentFiles: [],
+      quickFileRequest: 0,
+      scmOrder: [],
     }),
     actions: {
       setSidebar: (d, px: number) => { d.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX) },
@@ -131,10 +150,12 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       openFiles: (d) => {
         d.detailsView = 'files'
+        d.quickFileRequest = 0
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
       openFileDetails: (d, selection: FileSelection) => {
         d.fileSelection = selection
+        d.recentFiles = [selection.path, ...d.recentFiles.filter(path => path !== selection.path)].slice(0, RECENT_FILE_LIMIT)
         d.detailsView = 'file'
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
@@ -150,7 +171,23 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       setSidebarView: (d, view: SidebarView) => { d.sidebarView = view },
       openScmDetails: (d, selection: ScmSelection) => {
         d.scmSelection = selection
+        d.scmOrder = [selection]
         d.detailsView = 'scm'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openScmDetailsInOrder: (d, selection: ScmSelection, order: ScmSelection[]) => {
+        d.scmSelection = selection
+        d.scmOrder = order
+        d.detailsView = 'scm'
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
+      openTaskCenter: (d) => { d.globalOverlay = 'tasks' },
+      openInbox: (d) => { d.globalOverlay = 'inbox' },
+      openCommandPalette: (d) => { d.globalOverlay = 'commands' },
+      closeGlobalOverlay: (d) => { d.globalOverlay = null },
+      openQuickFile: (d) => {
+        d.detailsView = 'files'
+        d.quickFileRequest++
         if (d.details === 0) d.details = DETAILS_DEFAULT
       },
     },

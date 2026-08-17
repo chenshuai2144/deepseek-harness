@@ -1,0 +1,14 @@
+- button "Close global panel"
+- dialog "Command palette":
+  - img
+  - textbox "Search commands…"
+  - text: Esc
+  - listbox:
+    - option "Open task center" [selected]
+    - option "Open notification inbox"
+    - option "Open Changes"
+    - option "Open Files"
+    - option "Quick open file Ctrl+P"
+    - option "Open Browser"
+    - option "Open Settings"
+    - option "Open Plugins"

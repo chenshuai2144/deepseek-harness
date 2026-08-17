@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FsDirEntryView, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import { IconFolderClose16, IconFolderOpen16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconFolderClose16, IconFolderOpen16, IconSearchOutline16, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { FileSelection } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { fsFailureCopy } from './fs-error.ts'
 import { NS } from './locales.ts'
+import { matchWorkspaceFiles, scanWorkspaceFiles, type FileIndex } from './file-search.ts'
 import css from './FilePanel.module.css'
 
 /** Injected fs.listDir and layout writes for the File tree. */
@@ -35,6 +36,8 @@ export function FilePanel({
   openFileDetails,
   showHome,
   closeDetails,
+  recentFiles,
+  quickFileRequest,
   t,
 }: FilePanelProps) {
   const cwd = useSessions(list => list.byId[sessionId]?.cwd)
@@ -43,6 +46,11 @@ export function FilePanel({
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(['']))
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
+  const [query, setQuery] = useState('')
+  const [fileIndex, setFileIndex] = useState<FileIndex | undefined>(undefined)
+  const [scanning, setScanning] = useState(false)
+  const [scanFailure, setScanFailure] = useState<string | undefined>(undefined)
+  const searchBox = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async (workspace: string, path: string, signal?: AbortSignal) => {
     const response = await listDir({ cwd: workspace, ...path === '' ? {} : { path } }, signal)
@@ -67,6 +75,9 @@ export function FilePanel({
     setListings({})
     setExpanded(new Set(['']))
     setFailure(undefined)
+    setQuery('')
+    setFileIndex(undefined)
+    setScanFailure(undefined)
     if (cwd === undefined) {
       setLoading(false)
       return () => { controller.abort() }
@@ -83,6 +94,29 @@ export function FilePanel({
       })
     return () => { controller.abort() }
   }, [cwd, load, t])
+
+  useEffect(() => {
+    if (cwd === undefined || (query.trim() === '' && quickFileRequest === 0) || fileIndex !== undefined) return
+    const controller = new AbortController()
+    setScanning(true)
+    void scanWorkspaceFiles(listDir, cwd, controller.signal)
+      .then(setFileIndex)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setScanFailure(error instanceof Error ? error.message : t('error.failed'))
+      })
+      .finally(() => { if (!controller.signal.aborted) setScanning(false) })
+    return () => { controller.abort() }
+  }, [cwd, fileIndex, listDir, query, quickFileRequest, t])
+
+  useEffect(() => {
+    if (quickFileRequest === 0) return
+    searchBox.current?.querySelector('input')?.focus()
+  }, [quickFileRequest])
+
+  const matches = useMemo(
+    () => matchWorkspaceFiles(fileIndex?.paths ?? [], query),
+    [fileIndex, query],
+  )
 
   const toggle = useCallback((path: string) => {
     setExpanded((current) => {
@@ -144,22 +178,56 @@ export function FilePanel({
     <div className={css.root} data-testid="file-panel">
       {chrome}
       {failure !== undefined ? <p className={css.empty}>{failure}</p> : null}
-      {roots.length === 0
+      <div ref={searchBox} className={css.search}>
+        <Input
+          icon={<IconSearchOutline16 size={14} />}
+          value={query}
+          onChange={(event) => { setQuery(event.target.value) }}
+          placeholder={t('search.placeholder')}
+          aria-label={t('search.aria')}
+          spellCheck={false}
+        />
+        <kbd>Ctrl P</kbd>
+      </div>
+      {query.trim() !== '' ? (
+        <div className={css.searchResults} role="listbox" aria-label={t('search.results')}>
+          {scanning ? <p className={css.empty}>{t('search.scanning')}</p> : null}
+          {scanFailure === undefined ? null : <p className={css.empty}>{scanFailure}</p>}
+          {!scanning && scanFailure === undefined && matches.length === 0 ? <p className={css.empty}>{t('search.empty')}</p> : null}
+          {matches.map(path => (
+            <button type="button" key={path} role="option" onClick={() => { openFileDetails({ path }) }}>
+              <strong>{path.slice(path.lastIndexOf('/') + 1)}</strong>
+              <span>{path}</span>
+            </button>
+          ))}
+          {fileIndex?.truncated === true ? <p className={css.limit}>{t('search.truncated')}</p> : null}
+        </div>
+      ) : roots.length === 0
         ? <p className={css.empty}>{t('empty.directory')}</p>
         : (
-          <div className={css.tree} role="tree" aria-label={t('title')}>
-            {sortEntries(roots).map(entry => (
-              <TreeRow
-                key={entry.path}
-                entry={entry}
-                depth={0}
-                expanded={expanded}
-                listings={listings}
-                onToggle={toggle}
-                onOpen={openFileDetails}
-                t={t}
-              />
-            ))}
+          <div className={css.treeScroll}>
+            {recentFiles.length === 0 ? null : (
+              <section className={css.recent}>
+                <h2>{t('recent.title')}</h2>
+                {recentFiles.map(path => (
+                  <button type="button" key={path} onClick={() => { openFileDetails({ path }) }} title={path}>{path}</button>
+                ))}
+              </section>
+            )}
+            <div className={css.tree} role="tree" aria-label={t('title')}>
+              {sortEntries(roots).map(entry => (
+                <TreeRow
+                  key={entry.path}
+                  entry={entry}
+                  depth={0}
+                  expanded={expanded}
+                  listings={listings}
+                  onToggle={toggle}
+                  onOpen={openFileDetails}
+                  t={t}
+                />
+              ))}
+            </div>
           </div>
         )}
     </div>

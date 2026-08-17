@@ -47,6 +47,42 @@
   color: var(--dsw-alias-label-primary);
 }
 
+.navigation {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsw-font-mono);
+  font-size: 11px;
+}
+
+.navButton {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.navButton:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.navButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.navigation + .iconButton {
+  margin-left: 0;
+}
+
 .empty,
 .loading,
 .error {

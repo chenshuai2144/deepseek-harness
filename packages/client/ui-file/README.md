@@ -6,6 +6,8 @@ Workbench File plugin: occupies layout-owned `details.files` and `details.file`.
 
 A missing workspace, a path outside the workspace, a missing `ctx.fs`, a non-text file, and a preview that exceeds the 1 MiB cap each render an actionable empty or truncated state.
 
+`Ctrl+P` focuses a bounded recursive filename index built from `fs.listDir`; `.git` and `node_modules` are skipped, and fuzzy results prefer basename matches. The File pane also keeps the eight most recently opened paths for the current frame. File previews render workspace-relative breadcrumbs and a copy-path action.
+
 ## Model Experience
 
 None, as this plugin is a human File pane over privileged RPC; nothing here reaches a model request.
@@ -17,5 +19,5 @@ None; this package neither assembles nor sends a provider request.
 ## Known Limitations and Deferred Work
 
 - **Read-only preview** — the details column reuses `CodeBlock`; there is no editor or Monaco.
-- **No file watcher** — the tree loads on mount and when a directory expands.
+- **No file watcher** — the tree loads on mount and when a directory expands; quick open rebuilds its snapshot when the workspace or quick-open view changes.
 - **Loopback-only** — `fs.listDir` and `fs.readText` are privileged; a remote browser cannot drive host filesystem reads.

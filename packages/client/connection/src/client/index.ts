@@ -46,7 +46,7 @@ export {
 export type { ConnectionConfig, ConnectionSinks, ConnectionState }
 export type { ClientConnectionRpc } from '../rpc.ts'
 export { IpcApiClient } from './ipc-api-client.ts'
-export { createIpcFetch, type DshDesktopBridge, type IpcFetchPort } from '../ipc-fetch.ts'
+export { createIpcFetch, type DesktopNotification, type DshDesktopBridge, type IpcFetchPort } from '../ipc-fetch.ts'
 
 /** Observable Host description published by each completed connection handshake. */
 export interface HostDescriptionSource {

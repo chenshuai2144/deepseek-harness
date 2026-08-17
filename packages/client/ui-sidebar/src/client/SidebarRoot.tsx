@@ -1,5 +1,5 @@
 /**
- * Sidebar shell: column geometry only. Collapse is a slide plus crossfade:
+ * Sidebar shell: column geometry and frame-wide navigation. Collapse is a slide plus crossfade:
  * content freezes at its expanded width (inline style) and fades out in place
  * while the sliding column (AppFrame grid tracks) clips it — nothing reflows
  * mid-slide. At settle the wide-only content unmounts and the four upper
@@ -19,7 +19,8 @@ import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
   BrandWordmark, FishLogo,
-  IconNewChatOutline16, IconPanelLeftOutline16,
+  IconChecklistOutline14, IconNewChatOutline16, IconPanelLeftOutline16,
+  IconSearchOutline16, IconWarningOutline16,
   Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { SidebarRootComponentProps } from './contract/slots.ts'
@@ -46,6 +47,9 @@ export function SidebarRoot({
   width,
   startSession,
   toggleSidebar,
+  openTaskCenter,
+  openInbox,
+  openCommandPalette,
   t,
   renderSlot,
 }: SidebarRootComponentProps) {
@@ -180,6 +184,29 @@ export function SidebarRoot({
 
       {/* Footer actions stack above Settings in both sidebar widths. */}
       <div className={css.footArea}>
+        <div className={css.globalActions}>
+          <Tooltip label={t('tasks.aria')} delayMs={500} disabled={wide}>
+            <button type="button" className={css.globalAction} aria-label={t('tasks.aria')} onClick={openTaskCenter}>
+              <IconChecklistOutline14 size={18} />
+              {wide ? <span>{t('tasks')}</span> : null}
+            </button>
+          </Tooltip>
+          <Tooltip label={t('inbox.aria')} delayMs={500} disabled={wide}>
+            <button type="button" className={css.globalAction} aria-label={t('inbox.aria')} onClick={openInbox}>
+              <span className={css.actionIcon}>
+                <IconWarningOutline16 size={18} />
+              </span>
+              {wide ? <span>{t('inbox')}</span> : null}
+            </button>
+          </Tooltip>
+          <Tooltip label={t('commands.aria')} delayMs={500} disabled={wide}>
+            <button type="button" className={css.globalAction} aria-label={t('commands.aria')} onClick={openCommandPalette}>
+              <IconSearchOutline16 size={18} />
+              {wide ? <span>{t('commands')}</span> : null}
+              {wide ? <kbd>Ctrl K</kbd> : null}
+            </button>
+          </Tooltip>
+        </div>
         <div className={css.footerActions}>
           {renderSlot('sidebar.footer.action', { wide })}
         </div>

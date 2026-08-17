@@ -10,9 +10,13 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import type { createLayoutStore, DetailsView } from './stores.ts'
+import type { LayoutController } from './service.ts'
+import { GlobalWorkbench } from './GlobalWorkbench.tsx'
+import { NS } from './locales.ts'
 import css from './AppFrame.module.css'
 
 /** Full composed props: runtime share + child-slot render share + store share. */
@@ -23,6 +27,11 @@ export type AppFrameProps =
     | 'conversation' | 'details' | 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.browser' | 'details.scm' | 'shell.overlay'
   >
   & PropsStore<ReturnType<typeof createLayoutStore>>
+  & PropsLocale<typeof NS>
+  & {
+    commands: LayoutController
+    openSession: (sessionId: SessionId) => void
+  }
 
 /** Details slot name for one occupant. */
 const DETAILS_SLOT: Record<DetailsView, 'details.home' | 'details.changes' | 'details.files' | 'details.file' | 'details.browser' | 'details' | 'details.scm'> = {
@@ -99,14 +108,19 @@ function DragHandle(props: { side: 'sidebar' | 'details'; left: number; onStart:
 export function AppFrame({
   useStore,
   useSessions,
+  useWorkspaces,
   actions,
   renderSlot,
+  commands,
+  openSession,
+  t,
 }: AppFrameProps) {
   const panels = useStore(s => s)
   const detailsSession = useSessions((s) => {
     const current = s.current
     return current !== undefined && s.byId[current]?.blank === false ? current : undefined
   })
+  const sessionList = useSessions(s => s)
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
 
@@ -138,6 +152,54 @@ export function AppFrame({
       if (raf !== null) cancelAnimationFrame(raf)
     }
   }, [])
+
+  const notificationBaseline = useRef<Map<SessionId, { completed: boolean; pending?: string }> | null>(null)
+  useEffect(() => {
+    const next = new Map<SessionId, { completed: boolean; pending?: string }>()
+    for (const id of sessionList.ids) {
+      const summary = sessionList.byId[id]
+      if (summary === undefined) continue
+      next.set(id, {
+        completed: summary.completed === true,
+        ...(summary.pendingInteraction === undefined ? {} : { pending: summary.pendingInteraction }),
+      })
+    }
+    const previous = notificationBaseline.current
+    notificationBaseline.current = next
+    if (previous === null) return
+    const bridge = (globalThis as {
+      __DSH_DESKTOP__?: { notify?: (message: { title: string; body: string }) => Promise<boolean> }
+    }).__DSH_DESKTOP__
+    if (bridge?.notify === undefined) return
+    for (const [id, current] of next) {
+      const before = previous.get(id)
+      const summary = sessionList.byId[id]
+      if (summary === undefined) continue
+      let body: string | undefined
+      if (current.pending !== undefined && before?.pending === undefined) body = t('notification.attention')
+      else if (current.completed && before?.completed !== true) body = t('notification.completed')
+      if (body === undefined) continue
+      void bridge.notify({ title: summary.displayTitle, body }).catch((error: unknown) => {
+        console.warn('desktop notification rejected:', error)
+      })
+    }
+  }, [sessionList, t])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+      const key = event.key.toLocaleLowerCase()
+      if (key === 'k') {
+        event.preventDefault()
+        actions.openCommandPalette()
+      } else if (key === 'p') {
+        event.preventDefault()
+        actions.openQuickFile()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => { document.removeEventListener('keydown', onKeyDown) }
+  }, [actions])
 
   // Narrow viewports auto-collapse the sidebar; the store mirror keeps
   // toggleSidebar's semantics right (narrow toggles flip the manual
@@ -194,16 +256,31 @@ export function AppFrame({
         <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
         <DetailsColumn>
           {detailsSlot === 'details.scm'
-            ? renderSlot('details.scm', { selection: panels.scmSelection })
+            ? renderSlot('details.scm', { selection: panels.scmSelection, order: panels.scmOrder })
             : detailsSlot === 'details.file'
               ? renderSlot('details.file', { selection: panels.fileSelection })
-              : detailsSlot === 'details.browser'
-                ? renderSlot('details.browser', { href: panels.browserHref })
-                : renderSlot(detailsSlot, {})}
+              : detailsSlot === 'details.files'
+                ? renderSlot('details.files', { recentFiles: panels.recentFiles, quickFileRequest: panels.quickFileRequest })
+                : detailsSlot === 'details.browser'
+                  ? renderSlot('details.browser', { href: panels.browserHref })
+                  : renderSlot(detailsSlot, {})}
         </DetailsColumn>
       </>
       <div className={css.overlayLayer} data-shell-overlay>
         {renderSlot('shell.overlay', {})}
+        {panels.globalOverlay === null ? null : (
+          <GlobalWorkbench
+            view={panels.globalOverlay}
+            useSessions={useSessions}
+            useWorkspaces={useWorkspaces}
+            commands={commands}
+            openSession={openSession}
+            close={actions.closeGlobalOverlay}
+            openTasks={actions.openTaskCenter}
+            openInbox={actions.openInbox}
+            t={t}
+          />
+        )}
       </div>
       {!sidebarCollapsed && (
         <DragHandle

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GitFileDiff, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
-import { DiffBlock } from '@deepseek-ai/dsh-client-ui-primitives'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import { DiffBlock, IconChevronLeftOutline14, IconChevronRightOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ScmSelection } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { gitFailureCopy } from './git-error.ts'
 import { NS } from './locales.ts'
@@ -11,6 +11,8 @@ import css from './ScmDiff.module.css'
 export interface ScmDiffInjected {
   /** Privileged git.diff. */
   diff: IApiClient['git']['diff']
+  /** Open another SCM file while preserving list navigation order. */
+  openScmDetails: (selection: ScmSelection) => void
   /** Return the right column to the Changes list. */
   showChanges: () => void
   /** Return the right column to the workspace home. */
@@ -28,7 +30,18 @@ export type ScmDiffProps =
  * @param props - session hooks, owner selection, locale, and git.diff inject.
  * @returns the details body.
  */
-export function ScmDiff({ sessionId, selection, useSessions, diff, showChanges, showHome, closeDetails, t }: ScmDiffProps) {
+export function ScmDiff({
+  sessionId,
+  selection,
+  order,
+  useSessions,
+  diff,
+  openScmDetails,
+  showChanges,
+  showHome,
+  closeDetails,
+  t,
+}: ScmDiffProps) {
   const cwd = useSessions(list => list.byId[sessionId]?.cwd)
   const [file, setFile] = useState<GitFileDiff | undefined>(undefined)
   const [failure, setFailure] = useState<string | undefined>(undefined)
@@ -67,10 +80,36 @@ export function ScmDiff({ sessionId, selection, useSessions, diff, showChanges, 
     return () => { controller.abort() }
   }, [cwd, diff, selection, t])
 
+  const selectedIndex = selection === null
+    ? -1
+    : order.findIndex(item => item.path === selection.path && item.staged === selection.staged)
+  const previous = selectedIndex > 0 ? order[selectedIndex - 1] : undefined
+  const next = selectedIndex >= 0 ? order[selectedIndex + 1] : undefined
   const back = (
     <div className={css.chrome}>
       <button type="button" className={css.back} onClick={showHome}>{t('action.back')}</button>
       <button type="button" className={css.back} onClick={showChanges}>{t('action.backToChanges')}</button>
+      <span className={css.navigation}>
+        <button
+          type="button"
+          className={css.navButton}
+          aria-label={t('action.previousFile')}
+          disabled={previous === undefined}
+          onClick={() => { if (previous !== undefined) openScmDetails(previous) }}
+        >
+          <IconChevronLeftOutline14 />
+        </button>
+        <span>{selectedIndex < 0 ? '–' : `${selectedIndex + 1}/${order.length}`}</span>
+        <button
+          type="button"
+          className={css.navButton}
+          aria-label={t('action.nextFile')}
+          disabled={next === undefined}
+          onClick={() => { if (next !== undefined) openScmDetails(next) }}
+        >
+          <IconChevronRightOutline14 />
+        </button>
+      </span>
       <button
         type="button"
         className={css.iconButton}

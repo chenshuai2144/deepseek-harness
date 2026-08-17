@@ -70,6 +70,8 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/client/runtime': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-layout': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
   'packages/client/ui-sidebar': { kind: 'none', reason: 'Browser-side UI plugin layer; registers nothing model-facing.' },
+  'packages/client/ui-browser': { kind: 'none', reason: 'Browser-side Simple Browser panel; registers nothing model-facing.' },
+  'packages/client/ui-file': { kind: 'none', reason: 'Browser-side File tree and preview; registers nothing model-facing.' },
   'packages/client/ui-scm': { kind: 'none', reason: 'Browser-side SCM panel over privileged git.* RPC; the model keeps using bash.' },
   'packages/git/git': { kind: 'none', reason: 'Service Definition for the GUI SCM panel; registers nothing model-facing.' },
   'packages/git/git-local': { kind: 'none', reason: 'Local Git provider for the GUI SCM panel; the model keeps using bash.' },

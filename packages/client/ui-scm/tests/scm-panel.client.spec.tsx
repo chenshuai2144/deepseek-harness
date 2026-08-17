@@ -15,6 +15,11 @@ afterEach(() => {
 const SESSION = 'session' as SessionId
 const t: ScmPanelProps['t'] = makeTranslate(zh)
 
+function rejectNonError<T>(): Promise<T> {
+  // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- Exercises the unknown rejection fallback.
+  return new Promise((_resolve, reject) => { reject('nope') })
+}
+
 function ok<T>(value: T): Promise<RpcResponse<T>> {
   return Promise.resolve({ rpcId: 'rpc' as RpcResponse<T>['rpcId'], result: { ok: true, value } })
 }
@@ -66,6 +71,7 @@ function props(over: Partial<ScmPanelProps> & { sessions?: SessionListState } = 
     stage: over.stage ?? vi.fn(() => ok({ ok: true as const })),
     unstage: over.unstage ?? vi.fn(() => ok({ ok: true as const })),
     commit: over.commit ?? vi.fn(() => ok({ commit: 'abc' })),
+    diff: over.diff ?? vi.fn(({ path }: { path: string }) => ok({ path, oldText: '', newText: '' })),
     openScmDetails: over.openScmDetails ?? vi.fn(),
     showHome: over.showHome ?? vi.fn(),
     closeDetails: over.closeDetails ?? vi.fn(),
@@ -123,15 +129,37 @@ describe('ScmPanel', () => {
     render(<ScmPanel {...props({ status, stage, unstage, openScmDetails })} />)
     expect(await screen.findByText('main')).toBeDefined()
     fireEvent.click(screen.getByText('a.ts'))
-    expect(openScmDetails).toHaveBeenCalledWith({ path: 'a.ts', staged: false })
+    const order = [{ path: 'a.ts', staged: false }, { path: 'b.ts', staged: true }]
+    expect(openScmDetails).toHaveBeenCalledWith({ path: 'a.ts', staged: false }, order)
     fireEvent.click(screen.getByText('b.ts'))
-    expect(openScmDetails).toHaveBeenCalledWith({ path: 'b.ts', staged: true })
+    expect(openScmDetails).toHaveBeenCalledWith({ path: 'b.ts', staged: true }, order)
     fireEvent.click(screen.getByText(zh['action.stage']))
     await waitFor(() => { expect(stage).toHaveBeenCalledWith({ cwd: '/repo', paths: ['a.ts'] }) })
     fireEvent.click(screen.getByText(zh['action.unstage']))
     await waitFor(() => { expect(unstage).toHaveBeenCalledWith({ cwd: '/repo', paths: ['b.ts'] }) })
     fireEvent.click(screen.getByText(zh['action.stageAll']))
     await waitFor(() => { expect(stage).toHaveBeenCalledWith({ cwd: '/repo', paths: ['a.ts'] }) })
+    fireEvent.click(screen.getByText(zh['action.unstageAll']))
+    await waitFor(() => { expect(unstage).toHaveBeenCalledWith({ cwd: '/repo', paths: ['b.ts'] }) })
+  })
+
+  it('shows aggregate file, line, and upstream counts', async () => {
+    const status = vi.fn(() => ok<GitStatus>({
+      branch: 'topic',
+      ahead: 2,
+      behind: 3,
+      unstaged: [{ path: 'a.ts', status: 'M' }],
+      staged: [{ path: 'b.ts', status: 'M' }],
+    }))
+    const diff = vi.fn(({ path }: { path: string }) => path === 'a.ts'
+      ? ok({ path, oldText: 'a\n', newText: 'a\nb\n' })
+      : ok({ path, oldText: 'x\ny\n', newText: 'y\n' }))
+    render(<ScmPanel {...props({ status, diff })} />)
+
+    expect(await screen.findByText('2 个文件')).toBeDefined()
+    expect(await screen.findByText('+1')).toBeDefined()
+    expect(screen.getByText('−1')).toBeDefined()
+    expect(screen.getByText('↑2 ↓3')).toBeDefined()
   })
 
   it('rejects an empty commit message and commits a trimmed one', async () => {
@@ -151,6 +179,7 @@ describe('ScmPanel', () => {
     fireEvent.change(screen.getByPlaceholderText(zh['commit.placeholder']), { target: { value: '  done  ' } })
     fireEvent.click(screen.getByText(zh['action.commit']))
     await waitFor(() => { expect(commit).toHaveBeenCalledWith({ cwd: '/repo', message: 'done' }) })
+    expect(await screen.findByText('已提交 abc')).toBeDefined()
   })
 
   it('shows a commit RPC failure', async () => {
@@ -189,7 +218,7 @@ describe('ScmPanel', () => {
   })
 
   it('surfaces a non-Error status rejection', async () => {
-    render(<ScmPanel {...props({ status: vi.fn(() => Promise.reject('nope')) })} />)
+    render(<ScmPanel {...props({ status: vi.fn(() => rejectNonError()) as never })} />)
     expect(await screen.findByText(zh['error.failed'])).toBeDefined()
   })
 
@@ -248,7 +277,7 @@ describe('ScmPanel', () => {
       unstaged: [{ path: 'a.ts', status: 'M' }],
       staged: [],
     }))
-    render(<ScmPanel {...props({ status, stage: vi.fn(() => Promise.reject('nope')) })} />)
+    render(<ScmPanel {...props({ status, stage: vi.fn(() => rejectNonError()) as never })} />)
     expect(await screen.findByText('a.ts')).toBeDefined()
     fireEvent.click(screen.getByText(zh['action.stage']))
     expect(await screen.findByText(zh['error.failed'])).toBeDefined()
@@ -319,7 +348,7 @@ describe('ScmPanel', () => {
         staged: [],
         unstaged: [],
       }))
-      .mockImplementationOnce(() => Promise.reject('nope'))
+      .mockImplementationOnce(() => rejectNonError())
     render(<ScmPanel {...props({ status, refreshIntervalMs: 1_000 })} />)
     expect(await screen.findByText(zh['empty.clean'])).toBeDefined()
     await act(async () => { vi.advanceTimersByTime(1_000) })

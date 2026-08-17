@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('__DSH_DESKTOP__', {
   abort: (requestId) => { ipcRenderer.send('dsh:fetch-abort', requestId) },
   bootGraph: () => ipcRenderer.invoke('dsh:boot-graph'),
   readBundle: (url) => ipcRenderer.invoke('dsh:read-bundle', url),
+  notify: (message) => ipcRenderer.invoke('dsh:notify', message),
 })

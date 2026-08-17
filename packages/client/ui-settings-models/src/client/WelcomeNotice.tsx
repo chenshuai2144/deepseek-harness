@@ -32,7 +32,7 @@ export type WelcomeNoticeProps =
  * @returns the welcome modal or null while the step decides not to show.
  */
 export function WelcomeNotice(props: WelcomeNoticeProps): ReactNode {
-  const { complete, controller, useWelcome, t } = props
+  const { complete, controller, firstRun, useWelcome, t } = props
   const state = useWelcome(snapshot => snapshot)
   const finished = useRef(false)
   const finish = useCallback((): void => {
@@ -42,14 +42,14 @@ export function WelcomeNotice(props: WelcomeNoticeProps): ReactNode {
   }, [complete])
 
   useEffect(() => {
-    if (state.status === 'idle') void controller.load()
-  }, [controller, state.status])
+    if (firstRun && state.status === 'idle') void controller.load()
+  }, [controller, firstRun, state.status])
 
   useEffect(() => {
-    if (state.acknowledged) finish()
-  }, [finish, state.acknowledged])
+    if (!firstRun || state.acknowledged) finish()
+  }, [finish, firstRun, state.acknowledged])
 
-  if (state.status === 'idle' || state.status === 'loading' || state.acknowledged) return null
+  if (!firstRun || state.status === 'idle' || state.status === 'loading' || state.acknowledged) return null
 
   const acknowledge = async (): Promise<void> => {
     if (await controller.acknowledge()) finish()

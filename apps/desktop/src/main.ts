@@ -5,7 +5,7 @@
 
 import { dirname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fork, type ChildProcess } from 'node:child_process'
 import { app, BrowserWindow, ipcMain, Notification, protocol } from 'electron'
 import { injectBootManifest, type WebBootGraph } from '@deepseek-ai/dsh-client-modules'
@@ -19,6 +19,7 @@ import {
 } from './brand.ts'
 import { normalizeDesktopNotification } from './notification.ts'
 import type { HostToMain, MainToHost } from './protocol.ts'
+import { createDesktopSplashUrl } from './splash.ts'
 
 app.setName(PRODUCT_NAME)
 if (process.platform === 'win32') {
@@ -122,16 +123,47 @@ async function startDesktop(): Promise<void> {
     throw new Error('dsh desktop: renderer not built; run pnpm --dir apps/desktop build')
   }
   const distRoot = dirname(distIndex)
+  let desktopWindow: BrowserWindow | undefined
   const host = attachHost(forkHost(), (message) => {
     if (message.type === 'fetch-chunk') enqueueChunk(message.requestId, message.chunk)
     if (message.type === 'fetch-end') enqueueChunk(message.requestId, undefined, true)
     if (message.type === 'fetch-error') enqueueChunk(message.requestId, undefined, true, message.message)
   })
-  await host.waitFor('ready')
-  host.send({ type: 'boot-graph' })
-  const graphMessage = await host.waitFor('boot-graph')
-  const graph = graphMessage.graph as WebBootGraph
-  let desktopWindow: BrowserWindow | undefined
+  const icon = resolveDesktopIcon(desktopRoot)
+  if (process.platform === 'darwin' && icon !== undefined) {
+    app.dock?.setIcon(icon)
+  }
+  const window = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    title: PRODUCT_NAME,
+    frame: false,
+    backgroundColor: '#171717',
+    ...icon === undefined ? {} : { icon },
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: fileURLToPath(new URL('../preload.cjs', import.meta.url)),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  desktopWindow = window
+  window.on('closed', () => {
+    desktopWindow = undefined
+    host.send({ type: 'shutdown' })
+  })
+  ipcMain.on('dsh:window-minimize', () => { desktopWindow?.minimize() })
+  ipcMain.on('dsh:window-toggle-maximize', () => {
+    if (desktopWindow?.isMaximized()) desktopWindow.unmaximize()
+    else desktopWindow?.maximize()
+  })
+  ipcMain.on('dsh:window-close', () => { desktopWindow?.close() })
+
+  const splashUrl = createDesktopSplashUrl(PRODUCT_NAME, readFileSync(join(desktopRoot, 'icon.svg'), 'utf8'))
+  const [ready] = await Promise.all([host.waitFor('ready'), window.loadURL(splashUrl)])
+  const graph = ready.graph as WebBootGraph
+  if (window.isDestroyed()) return
 
   ipcMain.handle('dsh:fetch-start', async (_event, message: IpcFetchRequest): Promise<IpcFetchHead> => {
     streams.set(message.requestId, { chunks: [], done: false })
@@ -176,12 +208,6 @@ async function startDesktop(): Promise<void> {
     notification.show()
     return true
   })
-  ipcMain.on('dsh:window-minimize', () => { desktopWindow?.minimize() })
-  ipcMain.on('dsh:window-toggle-maximize', () => {
-    if (desktopWindow?.isMaximized()) desktopWindow.unmaximize()
-    else desktopWindow?.maximize()
-  })
-  ipcMain.on('dsh:window-close', () => { desktopWindow?.close() })
 
   protocol.handle('dsh-app', async (request) => {
     const url = new URL(request.url)
@@ -210,31 +236,7 @@ async function startDesktop(): Promise<void> {
     return net.fetch(pathToFileURL(target).href)
   })
 
-  const icon = resolveDesktopIcon(desktopRoot)
-  if (process.platform === 'darwin' && icon !== undefined) {
-    app.dock?.setIcon(icon)
-  }
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    title: PRODUCT_NAME,
-    frame: false,
-    backgroundColor: '#171717',
-    ...icon === undefined ? {} : { icon },
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: fileURLToPath(new URL('../preload.cjs', import.meta.url)),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  })
-  desktopWindow = window
   await window.loadURL('dsh-app://app/index.html')
-  window.on('closed', () => {
-    desktopWindow = undefined
-    host.send({ type: 'shutdown' })
-  })
 }
 
 app.whenReady().then(() => startDesktop()).catch((error: unknown) => {

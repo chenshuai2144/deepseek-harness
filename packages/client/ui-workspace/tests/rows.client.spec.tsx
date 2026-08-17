@@ -377,18 +377,20 @@ describe('workspace browser rows', () => {
   it('shows the hover card after the dwell and suppresses it while the row menu is open', () => {
     vi.useFakeTimers()
     try {
+      const updatedAt = new Date(2026, 7, 17, 14, 5).getTime()
       const node: SessionNode = {
         id: sid('s1'), title: 'Hovered', blank: false, running: true,
-        runningSubagentCount: 0, completed: false, updatedAt: 0,
+        runningSubagentCount: 0, completed: false, updatedAt,
       }
-      render(<SessionNodeItem node={node} currentId={undefined} now={60_000} onOpen={vi.fn()}
+      render(<SessionNodeItem node={node} currentId={undefined} now={updatedAt + 60_000} onOpen={vi.fn()}
         onRename={vi.fn()} onFork={vi.fn()} onArchive={vi.fn()} t={t} />)
       const wrapper = screen.getByRole('treeitem').parentElement as HTMLElement
       fireEvent.pointerEnter(wrapper)
       act(() => { vi.advanceTimersByTime(500) })
-      // Card body: full title + relative time + running status.
+      // Card body: full title + relative and absolute update times + running status.
       expect(screen.getAllByText('Hovered')).toHaveLength(2)
       expect(screen.getByText('1分钟前')).toBeTruthy()
+      expect(screen.getByText('更新于 2026年8月17日 14:05')).toBeTruthy()
       expect(screen.getAllByText('进行中')).toHaveLength(2)
       fireEvent.pointerLeave(wrapper)
       // Menu open (disabled=true) suppresses the card for the same hover.

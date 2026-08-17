@@ -38,10 +38,6 @@ const handle = async (message: MainToHost): Promise<void> => {
     await shutdown.shutdown(0)
     return
   }
-  if (message.type === 'boot-graph') {
-    send({ type: 'boot-graph', graph: modules?.graph() ?? { rev: '', entries: [] } })
-    return
-  }
   if (message.type === 'read-bundle') {
     const pathname = new URL(message.url, 'http://dsh.internal').pathname
     const match = /^\/plugins\/(.+)\/client\.js$/.exec(pathname)
@@ -87,4 +83,4 @@ const handle = async (message: MainToHost): Promise<void> => {
 process.on('message', (message: MainToHost) => {
   void handle(message)
 })
-send({ type: 'ready' })
+send({ type: 'ready', graph: modules?.graph() ?? { rev: '', entries: [] } })

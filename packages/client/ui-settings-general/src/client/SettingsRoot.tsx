@@ -135,17 +135,20 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
   // seats re-render through their own outlets' subscriptions.
   const rows = useSections(s => s)
   const onboardingSteps = useOnboardingSteps(s => s)
-  const onboardingActive = useSessions(state =>
-    state.phase === 'ready'
-    && (state.current === undefined || state.byId[state.current]?.blank === true))
-  const onboardingStep = onboardingActive
+  const onboardingSurface = useSessions((state) => {
+    if (state.phase !== 'ready') return 'pending'
+    return state.current === undefined || state.byId[state.current]?.blank === true
+      ? 'first-run'
+      : 'existing-session'
+  })
+  const onboardingStep = onboardingSurface !== 'pending'
     ? onboardingSteps.find(step => !completedOnboarding.has(step.id))
     : undefined
 
   useEffect(() => {
-    if (onboardingActive) return
+    if (onboardingSurface !== 'pending') return
     setCompletedOnboarding(new Set())
-  }, [onboardingActive])
+  }, [onboardingSurface])
 
   const completeOnboardingStep = useCallback((id: string) => {
     setCompletedOnboarding((previous) => {
@@ -179,6 +182,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
           renders null, so nothing paints or blocks while it decides. */}
       {onboardingStep !== undefined && renderSlot('settings.onboarding', {
         stepId: onboardingStep.id,
+        firstRun: onboardingSurface === 'first-run',
         complete: () => { completeOnboardingStep(onboardingStep.id) },
         openSection,
       }, { only: onboardingStep.id })}

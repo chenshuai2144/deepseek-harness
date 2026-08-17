@@ -1,7 +1,7 @@
 // Keyless browser e2e: the shipped DeepSeek adapter stays mounted while its
 // credential is absent, both ordered steps share the shipped modal chrome,
-// and the inline key write lands in an isolated harness home without a reload
-// or model call.
+// and first-run or restored-session key writes land in an isolated harness
+// home without a model call.
 import { randomBytes } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -9,10 +9,11 @@ import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import {
   acknowledgeReloadConnectionLoss, assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
-  launchWebScaffold, watchConsole, webSnapshotMode, type WebScaffold,
+  launchWebScaffold, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
   WELCOME_NOTICE_ACK_FIELD, WELCOME_NOTICE_COPY, WELCOME_NOTICE_SETTINGS_NAMESPACE,
   WELCOME_NOTICE_VERSION,
 } from './scaffold.ts'
@@ -22,9 +23,11 @@ const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/onboarding-deepseek-conf
 const WELCOME_EXPECTED = join(SNAPSHOT_DIR, 'welcome.expected.md')
 const MISSING_EXPECTED = join(SNAPSHOT_DIR, 'missing.expected.md')
 const MODELS_EXPECTED = join(SNAPSHOT_DIR, 'models.expected.md')
+const RETURNING_SESSION_FIXTURE = fileURLToPath(new URL('./snapshots/message-feedback-protocol/session.jsonl', import.meta.url))
+const RETURNING_SESSION_ID = 'onboarding-returning-session'
 const MODE = webSnapshotMode()
 
-describe.skipIf(MODE === 'record')('web e2e: first-run DeepSeek credential setup', () => {
+describe.skipIf(MODE === 'record')('web e2e: DeepSeek credential setup', () => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
@@ -189,6 +192,50 @@ describe.skipIf(MODE === 'record')('web e2e: first-run DeepSeek credential setup
     expect(await page.getByRole('dialog', { name: WELCOME_NOTICE_COPY.zh.title }).count()).toBe(0)
     expect(await page.getByRole('dialog', { name: '添加一个 API Key 开始使用' }).count()).toBe(0)
     expect(tripwire.pageErrors).toEqual([])
+  }, 60_000)
+
+  it('offers the missing-key flow over a restored nonblank session', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-onboarding-restored-session'))
+    const returningFixture = (await readFile(RETURNING_SESSION_FIXTURE, 'utf8'))
+      .replace('"{{cwd}}"', JSON.stringify(scaffold.workspaceCwd))
+    await seedSession(scaffold, returningFixture, RETURNING_SESSION_ID)
+    await page.close()
+    await scaffold.ctx.credentials.unset(credentialRef('DEEPSEEK_API_KEY'))
+
+    page = await browser.newPage({ viewport: { width: 1440, height: 960 }, locale: ZH_BROWSER_LOCALE })
+    tripwire = watchConsole(page)
+    page.on('console', message => browserConsole.push(message.text()))
+    await page.addInitScript((sessionId) => {
+      localStorage.setItem('dsh.sessions.current', JSON.stringify({ sessionId }))
+    }, RETURNING_SESSION_ID)
+    await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
+    await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+
+    expect(await page.getByText('Give one useful answer.', { exact: true }).count()).toBe(1)
+    expect(await page.getByRole('dialog', { name: WELCOME_NOTICE_COPY.zh.title }).count()).toBe(0)
+    const credentialStep = page.getByRole('dialog', { name: '添加一个 API Key 开始使用' })
+    await credentialStep.waitFor({ timeout: 15_000 })
+    const aria = await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd)
+    await compareOrRefreshGolden(MISSING_EXPECTED, aria, MODE)
+
+    const secret = `dsh_returning_${randomBytes(12).toString('hex')}`
+    await credentialStep.getByLabel('API 密钥', { exact: true }).fill(secret)
+    await credentialStep.getByRole('button', { name: '保存并继续' }).click()
+    await credentialStep.waitFor({ state: 'detached', timeout: 15_000 })
+    expect((await readFile(join(scaffold.harnessHome, '.credentials.yaml'), 'utf8'))
+      .includes(`DEEPSEEK_API_KEY: ${secret}`)).toBe(true)
+    expect((await page.content()).includes(secret)).toBe(false)
+    expect(browserConsole.some(line => line.includes(secret))).toBe(false)
+    expect(tripwire.warnings).toEqual([])
+    expect(tripwire.pageErrors).toEqual([])
+
+    await page.evaluate(() => { localStorage.removeItem('dsh.sessions.current') })
+    await page.close()
+    page = await browser.newPage({ viewport: { width: 1440, height: 960 }, locale: ZH_BROWSER_LOCALE })
+    tripwire = watchConsole(page)
+    page.on('console', message => browserConsole.push(message.text()))
+    await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
+    await page.waitForSelector('[class*="frame"]', { timeout: 15_000 })
   }, 60_000)
 
   it('configures arbitrary DeepSeek models and prompts after the selected model is removed', async () => {

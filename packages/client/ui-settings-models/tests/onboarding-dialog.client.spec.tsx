@@ -130,6 +130,7 @@ function harness(options: {
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
   const props: DeepSeekOnboardingDialogProps = {
     stepId: 'deepseek-official',
+    firstRun: true,
     complete,
     openSection,
     useSessions: unusedHook,

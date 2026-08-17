@@ -38,16 +38,21 @@ function hoverTimeLabel(updatedAt: number, now: number, t: RowTranslate): string
   return unit === 'now' ? t('time.now') : t('time.ago', { t: t(`time.${unit}`, { n }) })
 }
 
+/** Localized absolute date and local 24-hour clock without browser-locale leakage. */
+function absoluteTimeLabel(time: number, t: RowTranslate): string {
+  const d = new Date(time)
+  const pad2 = (v: number): string => String(v).padStart(2, '0')
+  const date = t('date.ymd', { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })
+  return `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
 /**
  * Absolute creation time through the dictionary's date template (the message
  * clock pattern): `toLocaleString` would follow the browser language, not the
  * app locale, and produce mixed-language text after a switch.
  */
 function createdLabel(createdAt: number, t: RowTranslate): string {
-  const d = new Date(createdAt)
-  const pad2 = (v: number): string => String(v).padStart(2, '0')
-  const date = t('date.ymd', { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() })
-  return t('hover.created', { time: `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}` })
+  return t('hover.created', { time: absoluteTimeLabel(createdAt, t) })
 }
 
 /** Hover-card body: workspace title, full directory path, absolute creation time. */
@@ -271,7 +276,7 @@ function SessionStatusDots({ statuses }: { statuses: readonly [SessionStatus, ..
   )
 }
 
-/** Hover-card body: full title, relative time, and every relevant live status. */
+/** Hover-card body: full title, relative and absolute update times, and every relevant live status. */
 function SessionHoverContent({ node, now, t }: { node: SessionNode; now: number; t: RowTranslate }) {
   const statuses = sessionStatuses(node, t)
   return (
@@ -279,7 +284,12 @@ function SessionHoverContent({ node, now, t }: { node: SessionNode; now: number;
       <div className={css.hoverTitle}>{displayTitle(node, t)}</div>
       {/* Same placeholder rule as the row's trailing cell: no timestamp
           before the first prompt. */}
-      {!node.blank && <div className={css.hoverTime}>{hoverTimeLabel(node.updatedAt, now, t)}</div>}
+      {!node.blank && (
+        <div className={css.hoverTime}>
+          <div>{hoverTimeLabel(node.updatedAt, now, t)}</div>
+          <div>{t('hover.updated', { time: absoluteTimeLabel(node.updatedAt, t) })}</div>
+        </div>
+      )}
       {statuses.map(status => (
         <div className={css.hoverStatus} key={status.label}>
           <StateDot state={status.state} />

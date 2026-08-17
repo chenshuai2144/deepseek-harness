@@ -20,7 +20,7 @@ const SEAT_CONTENT: Record<string, string> = {
 
 function mount({
   wide = true,
-  onboardingActive = true,
+  sessionState = 'first-run',
   rows = [
     { id: 'general', order: 0, label: 'General' },
     { id: 'models', order: 10, label: 'Models' },
@@ -30,7 +30,12 @@ function mount({
     { id: 'welcome', order: -100 },
     { id: 'credential', order: 0 },
   ],
-}: { wide?: boolean; onboardingActive?: boolean; rows?: Row[]; steps?: Step[] } = {}) {
+}: {
+  wide?: boolean
+  sessionState?: 'pending' | 'first-run' | 'existing-session'
+  rows?: Row[]
+  steps?: Step[]
+} = {}) {
   // Mutable row source standing in for the bound useSections hook; bump()
   // plays a ledger change through the same observable contract.
   let current = rows
@@ -41,13 +46,16 @@ function mount({
       return SEAT_CONTENT[key]
     }) as SettingsRootComponentProps['renderSlot'],
   )
-  const useSessions = ((select: (state: unknown) => unknown) => select(onboardingActive
-    ? { phase: 'ready', current: undefined, byId: {} }
-    : {
-      phase: 'ready',
-      current: 'active-session',
-      byId: { 'active-session': { blank: false } },
-    })) as never
+  const sessions = sessionState === 'pending'
+    ? { phase: 'pending', current: undefined, byId: {} }
+    : sessionState === 'first-run'
+      ? { phase: 'ready', current: undefined, byId: {} }
+      : {
+        phase: 'ready',
+        current: 'active-session',
+        byId: { 'active-session': { blank: false } },
+      }
+  const useSessions = ((select: (state: unknown) => unknown) => select(sessions)) as never
   const unusedHook = (() => { throw new Error('unused by SettingsRoot') }) as never
   const props: SettingsRootComponentProps = {
     useSessions,
@@ -205,7 +213,7 @@ describe('SettingsPanel navigation', () => {
   it('mounts onboarding steps in order and transfers ownership only on completion', () => {
     const { renderSlot } = mount()
     const first = renderSlot.mock.calls.find(call => call[0] === 'settings.onboarding')
-    expect(first?.[1]).toMatchObject({ stepId: 'welcome' })
+    expect(first?.[1]).toMatchObject({ stepId: 'welcome', firstRun: true })
     expect(first?.[2]).toEqual({ only: 'welcome' })
     act(() => {
       (first?.[1] as { complete: () => void }).complete()
@@ -223,9 +231,14 @@ describe('SettingsPanel navigation', () => {
     expect(screen.getByTestId('section-models')).toBeTruthy()
 
     cleanup()
-    const inactive = mount({ onboardingActive: false }).renderSlot.mock.calls
+    const existing = mount({ sessionState: 'existing-session' }).renderSlot.mock.calls
       .filter(call => call[0] === 'settings.onboarding')
-    expect(inactive).toHaveLength(0)
+    expect(existing[0]?.[1]).toMatchObject({ stepId: 'welcome', firstRun: false })
+
+    cleanup()
+    const pending = mount({ sessionState: 'pending' }).renderSlot.mock.calls
+      .filter(call => call[0] === 'settings.onboarding')
+    expect(pending).toHaveLength(0)
   })
 
   it('paints no takeover chrome of its own around the mounted step', () => {

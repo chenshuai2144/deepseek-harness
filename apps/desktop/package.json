@@ -7,7 +7,8 @@
   "main": "electron-main.mjs",
   "scripts": {
     "build": "vite build",
-    "start": "pnpm run build && electron ."
+    "start": "electron .",
+    "start:rebuild": "pnpm run build && electron ."
   },
   "license": "MIT",
   "dependencies": {

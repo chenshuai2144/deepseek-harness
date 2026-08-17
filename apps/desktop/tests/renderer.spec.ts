@@ -10,9 +10,12 @@ describe('desktop-owned renderer', () => {
   it('does not depend on the Web application artifact', async () => {
     const manifest = JSON.parse(await readFile(desktopFile('package.json'), 'utf8')) as {
       dependencies: Record<string, string>
+      scripts: Record<string, string>
     }
     expect(manifest.dependencies['@deepseek-ai/dsh-web-frontend']).toBeUndefined()
     expect(manifest.dependencies['@deepseek-ai/dsh-client-web']).toBeDefined()
+    expect(manifest.scripts.start).toBe('electron .')
+    expect(manifest.scripts['start:rebuild']).toContain('pnpm run build')
   })
 
   it('declares its own product chrome and mount point', async () => {

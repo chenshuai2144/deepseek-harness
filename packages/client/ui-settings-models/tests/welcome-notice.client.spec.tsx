@@ -20,7 +20,11 @@ function response<T>(value: T) {
   return { rpcId: 'welcome-rpc' as never, result: { ok: true as const, value } }
 }
 
-function mount(version?: string, mutateImpl: () => Promise<unknown> = () => Promise.resolve(response({}))) {
+function mount(
+  version?: string,
+  mutateImpl: () => Promise<unknown> = () => Promise.resolve(response({})),
+  firstRun = true,
+) {
   const appRoot = document.createElement('div')
   appRoot.id = 'root'
   document.body.append(appRoot)
@@ -49,6 +53,7 @@ function mount(version?: string, mutateImpl: () => Promise<unknown> = () => Prom
   const unusedHook = (() => { throw new Error('unused standard hook') }) as never
   const props: WelcomeNoticeProps = {
     stepId: 'welcome-notice',
+    firstRun,
     complete,
     openSection: vi.fn(),
     useSessions: unusedHook,
@@ -103,6 +108,14 @@ describe('WelcomeNotice', () => {
     await act(async () => { await h.controller.load() })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(h.complete).toHaveBeenCalledOnce()
+  })
+
+  it('skips the product notice outside the first-run surface without loading settings', async () => {
+    const h = mount(undefined, undefined, false)
+    await act(async () => { await Promise.resolve() })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(h.complete).toHaveBeenCalledOnce()
+    expect(h.controller.store.getSnapshot().status).toBe('idle')
   })
 
   it('keeps the sole action disabled while saving and reports a refused write', async () => {

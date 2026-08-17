@@ -128,6 +128,8 @@ export interface SettingsSectionOwnerProps {
 export interface SettingsOnboardingOwnerProps {
   /** Stable id of the step currently selected by the coordinator. */
   stepId: string
+  /** Whether the shell is showing the no-session or blank-session first-run surface. */
+  firstRun: boolean
   /** Complete or skip this step and transfer ownership to the next entry. */
   complete: () => void
   /** Open the settings panel directly on one registered section. */

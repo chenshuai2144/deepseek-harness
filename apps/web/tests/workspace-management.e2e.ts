@@ -30,6 +30,7 @@ const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/workspace-management', i
 const SEED = fileURLToPath(new URL('./snapshots/seeded-history/seed.jsonl', import.meta.url))
 const MODE = webSnapshotMode()
 const BROWSER_EXPECTED = join(SNAPSHOT_DIR, 'directory-browser.expected.md')
+const SESSION_HOVER_EXPECTED = join(SNAPSHOT_DIR, 'session-hover.expected.md')
 const SEED_ID = 'workspace-management-web-e2e'
 // Both waits exceed ui-primitives' 200ms POINTER_GRACE_MS. Keep them above
 // that value if the shared setting changes.
@@ -119,7 +120,8 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
     await mkdir(sessionCwd, { recursive: true })
     await writeFile(join(sessionCwd, 'a.txt'), 'alpha\n')
     await writeFile(join(sessionCwd, 'b.txt'), 'beta\n')
-    await seedSession(scaffold, await readFile(SEED, 'utf8'), SEED_ID)
+    const escapedCwd = JSON.stringify(scaffold.workspaceCwd).slice(1, -1)
+    await seedSession(scaffold, (await readFile(SEED, 'utf8')).replaceAll('{{cwd}}', escapedCwd), SEED_ID)
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
     tripwire = watchConsole(page)
@@ -493,6 +495,16 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
     // Card content: the full title plus the Idle status line (no aria role —
     // text anchors are the stable selector).
     await expect.poll(() => page.getByText('Idle', { exact: true }).count(), { timeout: 5_000 }).toBeGreaterThanOrEqual(1)
+    const hoverAria = await captureStableAria(
+      page,
+      '[role="button"][aria-label^="Copy:"]',
+      scaffold.workspaceCwd,
+    )
+    const stableHoverAria = hoverAria
+      .replaceAll(rowTitle, '{{session-title}}')
+      .replace(/Updated \d{4}-\d{1,2}-\d{1,2} \{\{clock\}\}/, 'Updated {{date-time}}')
+    await compareOrRefreshGolden(SESSION_HOVER_EXPECTED, stableHoverAria, MODE)
+    expect(await page.getByText(/^Updated \d{4}-\d{1,2}-\d{1,2} \d{2}:\d{2}$/).count()).toBe(1)
     // The card is REACHABLE: it sits 8px off the row, so getting to it means
     // crossing ground that belongs to neither. Hovering it must not dismiss
     // it — the hazard this scenario pins.

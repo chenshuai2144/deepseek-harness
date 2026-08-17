@@ -740,16 +740,22 @@
     },
     "apps/desktop": {
       "entry": [
-        "electron-main.mjs",
         "render-icon.mjs",
+        "renderer/node-module-stub.ts",
         "src/main.ts",
         "src/host.ts"
       ],
       "project": [
-        "src/**/*.ts"
+        "renderer/**/*.ts",
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@deepseek-ai/dsh"
+        "@deepseek-ai/dsh",
+        "@types/react",
+        "@types/react-dom",
+        "react",
+        "react-dom"
       ]
     },
     "apps/cli": {
@@ -763,7 +769,8 @@
         "tests/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@deepseek-ai/.+"
+        "@deepseek-ai/.+",
+        "electron"
       ]
     },
     "packages/client/modules": {

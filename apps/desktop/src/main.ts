@@ -1,16 +1,22 @@
 /**
- * Electron main process: forks the Host, serves the built web frontend over
- * a privileged custom scheme, and forwards renderer IPC to the Host.
+ * Electron main process: forks the Host, serves the desktop-owned renderer
+ * over a privileged custom scheme, and forwards renderer IPC to the Host.
  */
 
-import { createRequire } from 'node:module'
 import { dirname, join, normalize, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
 import { fork, type ChildProcess } from 'node:child_process'
 import { app, BrowserWindow, ipcMain, Notification, protocol } from 'electron'
 import { injectBootManifest, type WebBootGraph } from '@deepseek-ai/dsh-client-modules'
 import type { IpcFetchHead, IpcFetchPull, IpcFetchRequest } from '@deepseek-ai/dsh-client-connection'
-import { APP_USER_MODEL_ID, PRODUCT_NAME, resolveDesktopIcon, resolveDesktopRoot } from './brand.ts'
+import {
+  APP_USER_MODEL_ID,
+  PRODUCT_NAME,
+  resolveDesktopIcon,
+  resolveDesktopRendererIndex,
+  resolveDesktopRoot,
+} from './brand.ts'
 import { normalizeDesktopNotification } from './notification.ts'
 import type { HostToMain, MainToHost } from './protocol.ts'
 
@@ -22,16 +28,6 @@ if (process.platform === 'win32') {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ])
-
-const require = createRequire(import.meta.url)
-
-function resolveDistIndex(): string {
-  try {
-    return require.resolve('@deepseek-ai/dsh-web-frontend/dist/index.html')
-  } catch {
-    throw new Error('dsh desktop: frontend dist not built; run pnpm run build from the repository root first')
-  }
-}
 
 /** One pair of ChildProcess listeners; concurrent RPC waiters share it. */
 function attachHost(
@@ -120,7 +116,11 @@ function enqueueChunk(requestId: string, chunk?: Uint8Array, done = false, error
 }
 
 async function startDesktop(): Promise<void> {
-  const distIndex = resolveDistIndex()
+  const desktopRoot = resolveDesktopRoot(import.meta.url)
+  const distIndex = resolveDesktopRendererIndex(desktopRoot)
+  if (!existsSync(distIndex)) {
+    throw new Error('dsh desktop: renderer not built; run pnpm --dir apps/desktop build')
+  }
   const distRoot = dirname(distIndex)
   const host = attachHost(forkHost(), (message) => {
     if (message.type === 'fetch-chunk') enqueueChunk(message.requestId, message.chunk)
@@ -176,6 +176,12 @@ async function startDesktop(): Promise<void> {
     notification.show()
     return true
   })
+  ipcMain.on('dsh:window-minimize', () => { desktopWindow?.minimize() })
+  ipcMain.on('dsh:window-toggle-maximize', () => {
+    if (desktopWindow?.isMaximized()) desktopWindow.unmaximize()
+    else desktopWindow?.maximize()
+  })
+  ipcMain.on('dsh:window-close', () => { desktopWindow?.close() })
 
   protocol.handle('dsh-app', async (request) => {
     const url = new URL(request.url)
@@ -204,7 +210,7 @@ async function startDesktop(): Promise<void> {
     return net.fetch(pathToFileURL(target).href)
   })
 
-  const icon = resolveDesktopIcon(resolveDesktopRoot(import.meta.url))
+  const icon = resolveDesktopIcon(desktopRoot)
   if (process.platform === 'darwin' && icon !== undefined) {
     app.dock?.setIcon(icon)
   }
@@ -212,6 +218,8 @@ async function startDesktop(): Promise<void> {
     width: 1280,
     height: 800,
     title: PRODUCT_NAME,
+    frame: false,
+    backgroundColor: '#171717',
     ...icon === undefined ? {} : { icon },
     autoHideMenuBar: true,
     webPreferences: {

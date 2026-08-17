@@ -37,3 +37,12 @@ export function resolveDesktopIcon(desktopRoot: string): string | undefined {
   }
   return undefined
 }
+
+/**
+ * Desktop-owned renderer entry; it never resolves through the Web application package.
+ * @param desktopRoot - `apps/desktop`.
+ * @returns the generated desktop HTML path.
+ */
+export function resolveDesktopRendererIndex(desktopRoot: string): string {
+  return join(desktopRoot, 'dist', 'index.html')
+}

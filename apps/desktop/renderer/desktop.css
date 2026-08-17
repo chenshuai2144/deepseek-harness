@@ -1,0 +1,75 @@
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background: #171717;
+}
+
+.desktop-titlebar {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: space-between;
+  color: #f2f2f2;
+  background: #171717;
+  border-bottom: 1px solid #292929;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.desktop-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding-left: 14px;
+  font: 500 13px/1 "Segoe UI", sans-serif;
+}
+
+.desktop-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.desktop-window-controls {
+  display: flex;
+  align-self: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-window-controls button {
+  width: 46px;
+  padding: 0;
+  color: #d8d8d8;
+  background: transparent;
+  border: 0;
+  font: 400 16px/1 "Segoe UI Symbol", sans-serif;
+}
+
+.desktop-window-controls button:hover {
+  background: #303030;
+}
+
+.desktop-window-controls button[data-window-action="close"]:hover {
+  color: #fff;
+  background: #c42b1c;
+}
+
+#root {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}

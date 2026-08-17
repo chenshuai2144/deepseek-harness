@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`apps/desktop`（`@deepseek-ai/dsh-desktop`）是 Electron 外壳。`dsh desktop` 启动 [`electron-main.mjs`](../../../../apps/desktop/electron-main.mjs)，由它注册 tsx 再加载 TypeScript 主进程——Electron 的 argv 解析会把裸的 `--import tsx/esm` 当成应用路径。主进程拥有窗口，并以 Node（`--import tsx/esm`）fork Host，避免子进程的钩子被当成 Electron argv，再转发结构化克隆 fetch。渲染进程处于沙箱（`sandbox`、`contextIsolation`、无 Node），并通过特权 `dsh-app://` 方案加载已构建的 [`dsh-web-frontend`](../../../../apps/web) dist，以便 Vite 的绝对 `/assets/…` URL 能够解析。窗口标题是 DeepSeek Harness，任务栏／程序坞标记是产品鱼标（Windows 上为 `icon.ico`，其余平台为 `icon.png`），不是 Electron 默认图标。Host 子进程运行 `runProfile({ profile: 'desktop' })`，并暴露与 Web 路径相同的 Connection `fetch` handler、启动图和客户端 bundle 字节。preload 安装 `window.__DSH_DESKTOP__`；客户端 `apply()` 选择 [`IpcApiClient`](../../../../packages/client/connection/src/client/ipc-api-client.ts)，只替换 `doFetch`。mux 与 host 流仍走基类 SSE 读取。
+`apps/desktop`（`@deepseek-ai/dsh-desktop`）是 Electron 应用。`dsh desktop` 启动 [`electron-main.mjs`](../../../../apps/desktop/electron-main.mjs)，由它注册 tsx 再加载 TypeScript 主进程——Electron 的 argv 解析会把裸的 `--import tsx/esm` 当成应用路径。主进程拥有窗口，并以 Node（`--import tsx/esm`）fork Host，避免子进程的钩子被当成 Electron argv，再转发结构化克隆 fetch。沙箱渲染进程（`sandbox`、`contextIsolation`、无 Node）在 `apps/desktop` 下拥有自己的 Vite 构建、HTML 入口、透明鱼标和无边框标题栏；它不解析或提供 `dsh-web-frontend`。桌面入口挂载共享客户端 shell 内核，使插件 UI 组合继续在产品间复用，同时桌面产品外框与构建产物归 Desktop 自己所有。特权 `dsh-app://` 方案提供桌面 dist，使 Vite 的绝对 `/assets/…` URL 能够解析。Host 子进程运行 `runProfile({ profile: 'desktop' })`，并暴露与 Web 路径相同的 Connection `fetch` handler、启动图和客户端 bundle 字节。preload 为传输安装 `window.__DSH_DESKTOP__`，并另外安装窗口控制桥；客户端 `apply()` 选择 [`IpcApiClient`](../../../../packages/client/connection/src/client/ipc-api-client.ts)，只替换 `doFetch`。mux 与 host 流仍走基类 SSE 读取。
 
 `desktop` profile 模板为 `['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-desktop-app']`。[`dsh-desktop-app`](../../../../packages/bundle/desktop-app/README.md) 是补丁覆盖层：禁用 `webserver`、`web-startup`、`web-runtime` 和 `client-hmr`；重写 `connection`，去掉 `webRuntime` inject 且 `trustedHosts: []`；钉住 `directory-picker-native`；并挂载 `desktop-runtime`，使模型看到的是本机窗口（`app:desktop-surface`、`DSH_DESKTOP=1`）而不是 URL。`dsh desktop` 从仓库检出启动此外壳，配置 dump 时等同 `--profile desktop`。`electron` 只作为 `apps/desktop` 的依赖。
 
@@ -19,6 +19,8 @@ Status: implemented
 ## 考虑过的替代方案
 
 **在 Electron 内复用 `dsh-host-webserver`，让渲染进程指向 `http://127.0.0.1`。** 这会把 Web 载体及其监听／信任／HMR 表面留在一个没有浏览器标签、也没有 LAN URL 的产品里。分层笔记已禁止这种复用；IPC 改为对话同一套 fetch handler。
+
+**在 Electron 中加载已构建的 `apps/web` 前端。** 这会把 Desktop 启动、产品外框和发布产物耦合到 Web 应用，尽管二者只有客户端 shell 内核是共用的。Desktop 改为自行构建渲染进程，并从源码导入该内核。
 
 **再拆一套 `packages/electron-*` capability 包族。** 新产品组装写在 `apps/`。平行的 host/client 包树只会为一次载体替换复制 Connection、modules 和 web client。
 
@@ -30,4 +32,4 @@ Status: implemented
 
 ## 后果
 
-Web 产品保持不变：仅在存在 `webServer` 时才注册 HTTP `/api` 与 WebSocket 下行。Connection 与 modules 现在可以在没有该服务时启动，以便 Host 子进程活在零端口树中。代价是需要监督的第三进程、因 `file://` 无法承载 Vite 资源布局而引入的自定义 scheme，以及在后续周期之前没有客户端插件 HMR。特权 RPC 方法把沙箱渲染进程视为回环（`Host: 127.0.0.1`，无 `Origin`），因为它是产品自己的窗口，而不是远程浏览器。
+Web 产品保持不变：仅在存在 `webServer` 时才注册 HTTP `/api` 与 WebSocket 下行。Connection 与 modules 现在可以在没有该服务时启动，以便 Host 子进程活在零端口树中。Desktop 与 Web 生成各自的渲染产物，同时共享插件驱动的 shell 内核。代价是需要监督的第三进程、因 `file://` 无法承载 Vite 资源布局而引入的自定义 scheme，以及在后续周期之前没有客户端插件 HMR。特权 RPC 方法把沙箱渲染进程视为回环（`Host: 127.0.0.1`，无 `Origin`），因为它是产品自己的窗口，而不是远程浏览器。

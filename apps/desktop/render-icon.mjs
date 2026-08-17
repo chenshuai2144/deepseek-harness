@@ -1,19 +1,19 @@
 /**
- * One-shot: rasterize icon.svg to icon.png through Electron (Windows cannot
- * use SVG as a BrowserWindow icon) and wrap that PNG as icon.ico.
+ * One-shot: rasterize icon.svg to icon.png with a transparent background
+ * (Windows cannot use SVG as a BrowserWindow icon) and wrap it as icon.ico.
  */
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { app, BrowserWindow } from 'electron'
+import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 
 const root = dirname(fileURLToPath(import.meta.url))
-const svg = pathToFileURL(join(root, 'icon.svg')).href
+const svgPath = join(root, 'icon.svg')
 
 /**
  * Vista+ PNG-in-ICO container. Width/height bytes are 0 (256+); Windows
  * reads the PNG IHDR for the real size.
- * @param png - captured 512×512 PNG bytes.
+ * @param png - rendered 512×512 PNG bytes.
  * @returns ICO bytes.
  */
 function pngToIco(png) {
@@ -28,22 +28,13 @@ function pngToIco(png) {
   return Buffer.concat([header, entry, png])
 }
 
-app.whenReady().then(async () => {
-  const window = new BrowserWindow({
-    width: 512,
-    height: 512,
-    show: false,
-    frame: false,
-    useContentSize: true,
-    webPreferences: { offscreen: true },
-  })
-  await window.loadURL(svg)
-  const image = await window.webContents.capturePage()
-  const png = image.toPNG()
+async function renderIcon() {
+  const png = await sharp(svgPath).resize(512, 512).png().toBuffer()
   await writeFile(join(root, 'icon.png'), png)
   await writeFile(join(root, 'icon.ico'), pngToIco(png))
-  app.quit()
-}).catch((error) => {
+}
+
+renderIcon().catch((error) => {
   console.error(error)
-  app.exit(1)
+  process.exitCode = 1
 })

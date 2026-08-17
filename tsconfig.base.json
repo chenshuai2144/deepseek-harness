@@ -196,6 +196,8 @@
       "@deepseek-ai/dsh-client-ui-layout": ["./packages/client/ui-layout/src"],
       "@deepseek-ai/dsh-client-ui-sidebar": ["./packages/client/ui-sidebar/src"],
       "@deepseek-ai/dsh-client-ui-scm": ["./packages/client/ui-scm/src"],
+      "@deepseek-ai/dsh-client-ui-browser": ["./packages/client/ui-browser/src"],
+      "@deepseek-ai/dsh-client-ui-file": ["./packages/client/ui-file/src"],
       "@deepseek-ai/dsh-git/invariant": ["./packages/git/git/src/invariant.ts"],
       "@deepseek-ai/dsh-git-local/invariant": ["./packages/git/git-local/src/invariant.ts"],
       "@deepseek-ai/dsh-client-ui-conversation": ["./packages/client/ui-conversation/src"],

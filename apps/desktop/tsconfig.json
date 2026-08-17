@@ -1,15 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "lib/types",
     "noEmit": true,
     "rewriteRelativeImportExtensions": false,
-    "types": ["node"],
-    "lib": ["ES2024"]
+    "types": ["node", "vite/client"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx"
   },
   "include": [
-    "src"
+    "src",
+    "renderer",
+    "vite.config.ts"
   ],
   "references": [
     {
@@ -20,6 +23,9 @@
     },
     {
       "path": "../../packages/client/modules"
+    },
+    {
+      "path": "../../packages/client/web"
     },
     {
       "path": "../cli"

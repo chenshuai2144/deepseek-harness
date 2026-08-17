@@ -7,6 +7,7 @@ import {
   APP_USER_MODEL_ID,
   PRODUCT_NAME,
   resolveDesktopIcon,
+  resolveDesktopRendererIndex,
   resolveDesktopRoot,
 } from '../src/brand.ts'
 
@@ -21,5 +22,12 @@ describe('desktop brand chrome', () => {
     expect(icon).toBeDefined()
     expect(icon).toMatch(process.platform === 'win32' ? /icon\.ico$/ : /icon\.png$/)
     expect(resolveDesktopIcon(fileURLToPath(new URL('.', import.meta.url)))).toBeUndefined()
+  })
+
+  it('resolves only the desktop-owned renderer output', () => {
+    const root = fileURLToPath(new URL('../', import.meta.url))
+    const index = resolveDesktopRendererIndex(root)
+    expect(index).toMatch(/apps[\\/]desktop[\\/]dist[\\/]index\.html$/)
+    expect(index).not.toContain('apps/web')
   })
 })

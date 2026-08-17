@@ -23,6 +23,11 @@
   config:
     trustedHosts: []
 
+# The Electron main process serves the boot graph and plugin bundles, so the
+# modules row does not register HTTP routes or wait for webServer.
+- id: modules
+  inject: []
+
 # Auto waits on webServer. Include patches cannot change a row's `name`, so
 # disable auto and insert the native backend as its own row.
 - id: directory-picker

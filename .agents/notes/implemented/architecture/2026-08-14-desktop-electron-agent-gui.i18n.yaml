@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-14-desktop-electron-agent-gui.md
-2026-08-14-desktop-electron-agent-gui.md: 6d43f67defebbe0b2c18cc5bdb60380944a0d6a0
-2026-08-14-desktop-electron-agent-gui.zh.md: def42e7d0bbaff9a1d176a4b2bd7d723257cbdd7
+2026-08-14-desktop-electron-agent-gui.md: ce39066f80094535f4b667632435bc83bdee5ac6
+2026-08-14-desktop-electron-agent-gui.zh.md: 2f6f2cde0fbcd2d279df3838ad882b7fb3e1c1f6

@@ -631,8 +631,11 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
 
   it.skipIf(MODE === 'record')('issued zero model calls and stayed clean', async () => {
     expect(tripwire.warnings).toEqual([])
-    // The directory-browser aria golden is this spec's one owned artifact;
-    // the seed it reuses is owned (and inventory-guarded) by seeded-history.
-    await assertFixtureInventory(SNAPSHOT_DIR, ['.gitkeep', 'directory-browser.expected.md'])
+    // The seed this spec reuses is owned and inventory-guarded by seeded-history.
+    await assertFixtureInventory(SNAPSHOT_DIR, [
+      '.gitkeep',
+      'directory-browser.expected.md',
+      'session-hover.expected.md',
+    ])
   })
 })
